@@ -1,0 +1,13 @@
+# SnapFind backend — 100% free & open-source, no paid APIs.
+flask==3.1.0
+flask-cors==5.0.0
+flask-sqlalchemy==3.1.1
+pyjwt==2.10.1
+qrcode==7.4.2
+pillow==11.1.0
+numpy==1.26.4
+# Face AI: RetinaFace detection + ArcFace embeddings, local CPU.
+# First run downloads the model weights (free, one-time, ~a few hundred MB).
+deepface==0.0.93
+python-dotenv==1.0.1
+gunicorn==23.0.0
