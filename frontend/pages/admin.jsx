@@ -1,0 +1,599 @@
+import { useEffect, useState } from "react";
+import Head from "next/head";
+import { useRouter } from "next/router";
+import Navbar from "../components/Navbar";
+import UploadDropzone from "../components/UploadDropzone";
+import PhotoEditor from "../components/PhotoEditor";
+import {
+  getToken,
+  clearAuth,
+  fetchMe,
+  createEvent,
+  listEvents,
+  deleteEvent,
+  uploadEventPhotos,
+  listEventPhotos,
+  deletePhotoAdmin,
+  editPhotoAdmin,
+  listUsers,
+  updateUser,
+  resolveUrl,
+} from "../lib/api";
+
+export default function AdminPage() {
+  const router = useRouter();
+  const [me, setMe] = useState(null);
+  const [authChecked, setAuthChecked] = useState(false);
+  const [notAdmin, setNotAdmin] = useState(false);
+
+  const [events, setEvents] = useState([]);
+  const [selectedId, setSelectedId] = useState(null);
+  const [newName, setNewName] = useState("");
+  const [creating, setCreating] = useState(false);
+  const [lastCreated, setLastCreated] = useState(null);
+
+  const [photos, setPhotos] = useState([]);
+  const [photosLoading, setPhotosLoading] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [error, setError] = useState("");
+
+  const [tab, setTab] = useState("photos"); // photos | users
+  const [users, setUsers] = useState([]);
+  const [usersLoading, setUsersLoading] = useState(false);
+
+  const [editingPhoto, setEditingPhoto] = useState(null);
+  const [editSaving, setEditSaving] = useState(false);
+
+  // ---- auth guard ----
+  useEffect(() => {
+    const t = getToken();
+    if (!t) {
+      router.replace("/login");
+      return;
+    }
+    fetchMe()
+      .then((data) => {
+        if (data.user.role !== "admin") {
+          setNotAdmin(true);
+        } else {
+          setMe(data.user);
+          return listEvents();
+        }
+        setAuthChecked(true);
+      })
+      .then((data) => {
+        if (data && data.events) {
+          setEvents(data.events);
+          if (data.events.length > 0) setSelectedId(data.events[0].id);
+        }
+        setAuthChecked(true);
+      })
+      .catch(() => {
+        clearAuth();
+        router.replace("/login");
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const selectedEvent = events.find((e) => e.id === selectedId) || null;
+
+  const refreshPhotos = async (eventId) => {
+    setPhotosLoading(true);
+    try {
+      const data = await listEventPhotos(eventId);
+      setPhotos(data.photos || []);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setPhotosLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (selectedId) refreshPhotos(selectedId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedId]);
+
+  // ---- handlers ----
+  const handleCreateEvent = async (e) => {
+    e.preventDefault();
+    if (!newName.trim()) return;
+    setCreating(true);
+    setError("");
+    try {
+      const data = await createEvent(newName.trim());
+      const ev = data.event;
+      setEvents((prev) => [ev, ...prev]);
+      setSelectedId(ev.id);
+      setLastCreated(ev);
+      setNewName("");
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const handleDeleteEvent = async (id, name) => {
+    if (!window.confirm(`Delete event "${name}" and all its photos?`)) return;
+    setError("");
+    try {
+      await deleteEvent(id);
+      setEvents((prev) => prev.filter((e) => e.id !== id));
+      if (selectedId === id) {
+        const rest = events.filter((e) => e.id !== id);
+        setSelectedId(rest.length ? rest[0].id : null);
+      }
+      if (lastCreated && lastCreated.id === id) setLastCreated(null);
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  const handleFiles = async (files) => {
+    if (!selectedId || !files.length) return;
+    setUploading(true);
+    setError("");
+    try {
+      const data = await uploadEventPhotos(selectedId, files);
+      setPhotos(data.photos || []);
+      setEvents((prev) =>
+        prev.map((e) =>
+          e.id === selectedId ? { ...e, photo_count: data.photo_count ?? e.photo_count } : e
+        )
+      );
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleDeletePhoto = async (photoId, filename) => {
+    if (!window.confirm(`Delete "${filename}"?`)) return;
+    setError("");
+    try {
+      await deletePhotoAdmin(photoId);
+      setPhotos((prev) => prev.filter((p) => p.id !== photoId));
+      setEvents((prev) =>
+        prev.map((e) =>
+          e.id === selectedId
+            ? { ...e, photo_count: Math.max(0, (e.photo_count || 1) - 1) }
+            : e
+        )
+      );
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  // ---- user access control ----
+  const refreshUsers = async () => {
+    setUsersLoading(true);
+    try {
+      const data = await listUsers();
+      setUsers(data.users || []);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setUsersLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (tab === "users" && authChecked && !notAdmin) refreshUsers();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab, authChecked]);
+
+  const handleToggleActive = async (u) => {
+    setError("");
+    try {
+      const data = await updateUser(u.id, { is_active: !u.is_active });
+      setUsers((prev) => prev.map((x) => (x.id === u.id ? data.user : x)));
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  // ---- photo editing ----
+  const handleSaveEdit = async (file) => {
+    if (!editingPhoto) return;
+    setEditSaving(true);
+    setError("");
+    try {
+      const data = await editPhotoAdmin(editingPhoto.id, file);
+      setPhotos((prev) =>
+        prev.map((p) => (p.id === editingPhoto.id ? data.photo : p))
+      );
+      setEditingPhoto(null);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setEditSaving(false);
+    }
+  };
+
+  const copyJoinLink = async (url) => {
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      setError("Could not copy to clipboard");
+    }
+  };
+
+  if (!authChecked) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-zinc-950 text-zinc-400">
+        Loading…
+      </div>
+    );
+  }
+
+  if (notAdmin) {
+    return (
+      <>
+        <Navbar />
+        <div className="mx-auto max-w-xl px-4 py-24 text-center text-white">
+          <div className="text-5xl">🚫</div>
+          <h1 className="mt-4 text-2xl font-bold">Admins only</h1>
+          <p className="mt-2 text-zinc-400">
+            This studio panel is for photographer accounts. Your guest gallery
+            is waiting for you instead.
+          </p>
+          <button
+            onClick={() => router.push("/gallery")}
+            className="mt-6 rounded-xl bg-gradient-to-r from-violet-500 to-fuchsia-500 px-6 py-2.5 font-semibold"
+          >
+            Go to My Gallery
+          </button>
+        </div>
+      </>
+    );
+  }
+
+  return (
+    <>
+      <Head>
+        <title>Photographer Studio — SnapFind</title>
+      </Head>
+      <div className="min-h-screen bg-zinc-950 text-white">
+        <Navbar />
+
+        <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold">Photographer Studio 📷</h1>
+              <p className="mt-1 text-sm text-zinc-400">
+                Signed in as {me?.name} — create events, upload photos, share QR codes.
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-6 flex gap-2">
+            {[
+              { id: "photos", label: "📸 Photos & Events" },
+              { id: "users", label: "👥 Users" },
+            ].map((t) => (
+              <button
+                key={t.id}
+                onClick={() => setTab(t.id)}
+                className={`rounded-xl px-4 py-2 text-sm font-medium transition ${
+                  tab === t.id
+                    ? "bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white"
+                    : "bg-white/5 text-zinc-400 hover:bg-white/10 hover:text-white"
+                }`}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+
+          {error && (
+            <div className="mt-4 rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-2.5 text-sm text-red-300">
+              {error}
+            </div>
+          )}
+
+          {tab === "photos" && (
+          <div className="mt-6 grid gap-6 lg:grid-cols-3">
+            {/* ------- LEFT COLUMN ------- */}
+            <div className="space-y-6">
+              {/* New event */}
+              <div className="rounded-2xl bg-white/5 p-6 ring-1 ring-white/10">
+                <h2 className="font-semibold">New event</h2>
+                <form onSubmit={handleCreateEvent} className="mt-3 flex gap-2">
+                  <input
+                    value={newName}
+                    onChange={(e) => setNewName(e.target.value)}
+                    placeholder="e.g. Ananya's Wedding"
+                    className="min-w-0 flex-1 rounded-xl border border-white/10 bg-zinc-900 px-4 py-2.5 text-sm outline-none transition focus:border-fuchsia-500"
+                  />
+                  <button
+                    type="submit"
+                    disabled={creating || !newName.trim()}
+                    className="rounded-xl bg-gradient-to-r from-violet-500 to-fuchsia-500 px-4 py-2.5 text-sm font-semibold transition hover:opacity-90 disabled:opacity-50"
+                  >
+                    {creating ? "…" : "Create"}
+                  </button>
+                </form>
+
+                {lastCreated && (
+                  <div className="mt-4 rounded-xl bg-white/5 p-4 ring-1 ring-white/10">
+                    <p className="text-sm font-semibold text-emerald-300">
+                      ✅ Event created!
+                    </p>
+                    <div className="mt-3 flex justify-center">
+                      <img
+                        src={resolveUrl(lastCreated.qr_url)}
+                        alt="Event QR code"
+                        className="h-44 w-44 rounded-xl bg-white p-2"
+                      />
+                    </div>
+                    <p className="mt-3 truncate text-center text-xs text-zinc-400">
+                      {lastCreated.join_url}
+                    </p>
+                    <button
+                      onClick={() => copyJoinLink(lastCreated.join_url)}
+                      className="mt-2 w-full rounded-xl border border-white/15 py-2 text-sm font-medium text-zinc-200 transition hover:border-white/30"
+                    >
+                      {copied ? "Copied! ✅" : "Copy join link"}
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Events list */}
+              <div className="rounded-2xl bg-white/5 p-6 ring-1 ring-white/10">
+                <h2 className="font-semibold">Your events</h2>
+                {events.length === 0 ? (
+                  <p className="mt-3 text-sm text-zinc-500">
+                    No events yet. Create your first one above. 🎉
+                  </p>
+                ) : (
+                  <ul className="mt-3 space-y-2">
+                    {events.map((ev) => (
+                      <li
+                        key={ev.id}
+                        onClick={() => setSelectedId(ev.id)}
+                        className={`flex cursor-pointer items-center justify-between rounded-xl px-3 py-2.5 ring-1 transition ${
+                          ev.id === selectedId
+                            ? "bg-fuchsia-500/15 ring-fuchsia-500/40"
+                            : "bg-white/5 ring-white/10 hover:ring-white/25"
+                        }`}
+                      >
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-medium">{ev.name}</p>
+                          <p className="text-xs text-zinc-500">
+                            {ev.photo_count ?? 0} photos
+                            {ev.created_at &&
+                              ` · ${new Date(ev.created_at).toLocaleDateString()}`}
+                          </p>
+                        </div>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteEvent(ev.id, ev.name);
+                          }}
+                          className="ml-2 rounded-lg px-2 py-1 text-sm text-zinc-500 transition hover:bg-red-500/15 hover:text-red-400"
+                          title="Delete event"
+                        >
+                          🗑
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </div>
+
+            {/* ------- RIGHT COLUMN: photos ------- */}
+            <div className="lg:col-span-2">
+              <div className="rounded-2xl bg-white/5 p-6 ring-1 ring-white/10">
+                {!selectedEvent ? (
+                  <p className="py-16 text-center text-sm text-zinc-500">
+                    Select or create an event to upload photos.
+                  </p>
+                ) : (
+                  <>
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <h2 className="font-semibold">
+                        {selectedEvent.name}
+                        <span className="ml-2 text-sm font-normal text-zinc-500">
+                          {photos.length} photo{photos.length === 1 ? "" : "s"}
+                        </span>
+                      </h2>
+                      {selectedEvent.qr_url && (
+                        <a
+                          href={resolveUrl(selectedEvent.qr_url)}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-xs font-medium text-fuchsia-300 hover:underline"
+                        >
+                          Open QR code ↗
+                        </a>
+                      )}
+                    </div>
+
+                    <div className="mt-4">
+                      <UploadDropzone
+                        onFiles={handleFiles}
+                        label={
+                          uploading
+                            ? "Uploading…"
+                            : "Drop event photos here or click to browse"
+                        }
+                      />
+                      {uploading && (
+                        <p className="mt-2 text-center text-sm text-zinc-400">
+                          Uploading and scanning faces… this can take a while on CPU.
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="mt-6">
+                      {photosLoading ? (
+                        <p className="py-8 text-center text-sm text-zinc-500">
+                          Loading photos…
+                        </p>
+                      ) : photos.length === 0 ? (
+                        <p className="py-8 text-center text-sm text-zinc-500">
+                          No photos yet — upload some above. 📸
+                        </p>
+                      ) : (
+                        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                          {photos.map((p) => (
+                            <div
+                              key={p.id}
+                              className="group relative overflow-hidden rounded-xl ring-1 ring-white/10"
+                            >
+                              <img
+                                src={resolveUrl(p.url)}
+                                alt={p.filename}
+                                className="aspect-square w-full object-cover"
+                                loading="lazy"
+                              />
+                              <span className="absolute left-2 top-2 rounded-full bg-black/70 px-2 py-0.5 text-xs font-medium text-white">
+                                {p.faces_detected ?? 0} faces
+                              </span>
+                              <button
+                                onClick={() => handleDeletePhoto(p.id, p.filename)}
+                                className="absolute right-2 top-2 rounded-full bg-black/70 px-2 py-0.5 text-xs text-red-300 opacity-0 transition group-hover:opacity-100"
+                                title="Delete photo"
+                              >
+                                🗑
+                              </button>
+                              <button
+                                onClick={() => setEditingPhoto(p)}
+                                className="absolute right-2 top-9 rounded-full bg-black/70 px-2 py-0.5 text-xs text-zinc-200 opacity-0 transition group-hover:opacity-100"
+                                title="Edit photo (rotate / flip)"
+                              >
+                                ✏️
+                              </button>
+                              <p className="truncate bg-black/60 px-2 py-1 text-[11px] text-zinc-300">
+                                {p.filename}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+          )}
+
+          {tab === "users" && (
+            <div className="mt-6 rounded-2xl bg-white/5 p-6 ring-1 ring-white/10">
+              <div className="flex items-center justify-between">
+                <h2 className="font-semibold">User access control</h2>
+                <button
+                  onClick={refreshUsers}
+                  className="rounded-xl bg-white/10 px-3 py-1.5 text-xs font-medium text-zinc-300 hover:bg-white/15"
+                >
+                  ↻ Refresh
+                </button>
+              </div>
+              <p className="mt-1 text-sm text-zinc-500">
+                Grant or revoke access for any user — revoked users can&apos;t
+                sign in. You can&apos;t change your own account.
+              </p>
+              <div className="mt-4">
+                {usersLoading ? (
+                  <p className="py-8 text-center text-sm text-zinc-500">
+                    Loading users…
+                  </p>
+                ) : users.length === 0 ? (
+                  <p className="py-8 text-center text-sm text-zinc-500">
+                    No users yet.
+                  </p>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-sm">
+                      <thead>
+                        <tr className="text-xs uppercase tracking-wide text-zinc-500">
+                          <th className="pb-2 pr-4 font-medium">User</th>
+                          <th className="pb-2 pr-4 font-medium">Role</th>
+                          <th className="pb-2 pr-4 font-medium">Status</th>
+                          <th className="pb-2 text-right font-medium">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {users.map((u) => (
+                          <tr key={u.id} className="border-t border-white/5">
+                            <td className="py-3 pr-4">
+                              <p className="font-medium text-white">
+                                {u.name}{" "}
+                                {u.id === me?.id && (
+                                  <span className="text-xs font-normal text-zinc-500">
+                                    (you)
+                                  </span>
+                                )}
+                              </p>
+                              <p className="text-xs text-zinc-500">{u.email}</p>
+                            </td>
+                            <td className="py-3 pr-4">
+                              <span
+                                className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                                  u.role === "admin"
+                                    ? "bg-fuchsia-500/15 text-fuchsia-300"
+                                    : "bg-white/10 text-zinc-300"
+                                }`}
+                              >
+                                {u.role}
+                              </span>
+                            </td>
+                            <td className="py-3 pr-4">
+                              <span
+                                className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                                  u.is_active
+                                    ? "bg-emerald-500/15 text-emerald-300"
+                                    : "bg-red-500/15 text-red-300"
+                                }`}
+                              >
+                                {u.is_active ? "Active" : "Disabled"}
+                              </span>
+                            </td>
+                            <td className="py-3 text-right">
+                              {u.id !== me?.id ? (
+                                <button
+                                  onClick={() => handleToggleActive(u)}
+                                  className={`rounded-lg px-3 py-1 text-xs font-medium ${
+                                    u.is_active
+                                      ? "bg-red-500/10 text-red-300 hover:bg-red-500/20"
+                                      : "bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20"
+                                  }`}
+                                >
+                                  {u.is_active ? "Revoke access" : "Grant access"}
+                                </button>
+                              ) : (
+                                <span className="text-xs text-zinc-600">—</span>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </main>
+
+        {editingPhoto && (
+          <PhotoEditor
+            photo={editingPhoto}
+            onClose={() => setEditingPhoto(null)}
+            onSave={handleSaveEdit}
+            saving={editSaving}
+          />
+        )}
+      </div>
+    </>
+  );
+}
