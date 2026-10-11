@@ -22,6 +22,7 @@ export default function GalleryPage() {
   const [eventSlug, setEventSlug] = useState("");
   const [matches, setMatches] = useState([]);
   const [searched, setSearched] = useState(false);
+  const [searchedSlug, setSearchedSlug] = useState("");
   const [loading, setLoading] = useState(false);
 
   const [selfieFile, setSelfieFile] = useState(null);
@@ -144,6 +145,7 @@ export default function GalleryPage() {
     setLoading(true);
     setError("");
     setSearched(true);
+    setSearchedSlug(slug.trim());
     try {
       const data = await getMatches(slug.trim());
       setMatches(data.matches || []);
@@ -376,11 +378,14 @@ export default function GalleryPage() {
                 3
               </span>
               Your matched photos
-              {searched && matches.length > 0 && (
-                <span className="ml-2 text-sm font-normal text-zinc-500">
-                  {matches.length} found
-                </span>
-              )}
+              {searched &&
+                searchedSlug &&
+                eventSlug.trim() === searchedSlug &&
+                matches.length > 0 && (
+                  <span className="ml-2 text-sm font-normal text-zinc-500">
+                    {matches.length} found
+                  </span>
+                )}
             </h2>
 
             {loading ? (
@@ -390,6 +395,10 @@ export default function GalleryPage() {
             ) : !searched ? (
               <p className="py-10 text-center text-sm text-zinc-500">
                 Enter an event code above to start searching. 🔍
+              </p>
+            ) : !searchedSlug || eventSlug.trim() !== searchedSlug ? (
+              <p className="py-10 text-center text-sm text-zinc-500">
+                Event code changed — press <span className="font-semibold text-zinc-300">Find my photos</span> to search again. 🔍
               </p>
             ) : matches.length === 0 ? (
               <div className="py-10 text-center">
