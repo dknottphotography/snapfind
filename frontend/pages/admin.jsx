@@ -12,6 +12,7 @@ import {
   listEvents,
   deleteEvent,
   uploadEventPhotosProgress,
+  compressImage,
   listEventPhotos,
   deletePhotoAdmin,
   editPhotoAdmin,
@@ -135,10 +136,17 @@ export default function AdminPage() {
   const handleFiles = async (files) => {
     if (!selectedId || !files.length) return;
     setUploading(true);
-    setUploadProgress({ done: 0, total: files.length, fileName: "", loaded: 0, fileTotal: 1 });
+    setUploadProgress({ done: 0, total: files.length, fileName: "Preparing photos…", loaded: 0, fileTotal: 1, preparing: true });
     setError("");
     try {
-      const data = await uploadEventPhotosProgress(selectedId, files, (p) =>
+      // Shrink photos in-browser first: 10-20x smaller uploads,
+      // much faster on slow connections. No quality loss for face matching.
+      const compressed = [];
+      for (const f of files) {
+        compressed.push(await compressImage(f));
+      }
+      setUploadProgress({ done: 0, total: compressed.length, fileName: "", loaded: 0, fileTotal: 1 });
+      const data = await uploadEventPhotosProgress(selectedId, compressed, (p) =>
         setUploadProgress({ ...p })
       );
       setPhotos((prev) => [...(data.photos || []), ...prev]);

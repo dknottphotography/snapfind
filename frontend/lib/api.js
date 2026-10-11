@@ -134,6 +134,50 @@ export function uploadEventPhotos(eventId, files) {
 }
 
 /**
+ * Shrink an image in the browser before upload (canvas resize).
+ * Face recognition only needs ~112px face crops, so 1280px is plenty.
+ * Returns the original file if it's not an image or already small.
+ */
+export function compressImage(file, maxDim = 1280, quality = 0.82) {
+  return new Promise((resolve) => {
+    if (!file.type.startsWith("image/") || file.size < 400 * 1024) {
+      resolve(file);
+      return;
+    }
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
+      if (scale >= 1) {
+        resolve(file);
+        return;
+      }
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.round(img.width * scale);
+      canvas.height = Math.round(img.height * scale);
+      canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
+      canvas.toBlob(
+        (blob) => {
+          if (blob && blob.size < file.size) {
+            resolve(new File([blob], file.name.replace(/\.\w+$/, ".jpg"), { type: "image/jpeg" }));
+          } else {
+            resolve(file);
+          }
+        },
+        "image/jpeg",
+        quality
+      );
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      resolve(file);
+    };
+    img.src = url;
+  });
+}
+
+/**
  * Upload photos one at a time with live progress.
  * onProgress({ done, total, fileName, loaded, fileTotal }) is called
  * repeatedly: byte-level progress within each file, plus file counts.
