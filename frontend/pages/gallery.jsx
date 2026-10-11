@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Head from "next/head";
 import { useRouter } from "next/router";
 import Navbar from "../components/Navbar";
@@ -28,6 +28,77 @@ export default function GalleryPage() {
   const [uploadingSelfie, setUploadingSelfie] = useState(false);
   const [selfieStatus, setSelfieStatus] = useState("");
   const [showRetake, setShowRetake] = useState(false);
+
+  // ---- in-page camera ----
+  const [showCamera, setShowCamera] = useState(false);
+  const [cameraError, setCameraError] = useState("");
+  const videoRef = useRef(null);
+  const streamRef = useRef(null);
+
+  const stopCamera = () => {
+    try {
+      streamRef.current?.getTracks().forEach((t) => t.stop());
+    } catch {
+      /* ignore */
+    }
+    streamRef.current = null;
+  };
+
+  const openCamera = async () => {
+    setCameraError("");
+    setShowCamera(true);
+    stopCamera();
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "user" },
+        audio: false,
+      });
+      streamRef.current = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        await videoRef.current.play().catch(() => {});
+      }
+    } catch (err) {
+      console.error("Camera failed:", err);
+      setCameraError(
+        "Couldn't access your camera. Check the browser permission, or upload a photo from your gallery instead."
+      );
+    }
+  };
+
+  const closeCamera = () => {
+    stopCamera();
+    setShowCamera(false);
+    setCameraError("");
+  };
+
+  const capturePhoto = () => {
+    const video = videoRef.current;
+    if (!video || !video.videoWidth) return;
+    const canvas = document.createElement("canvas");
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const ctx = canvas.getContext("2d");
+    // Mirror horizontally so the capture matches the selfie preview
+    ctx.translate(canvas.width, 0);
+    ctx.scale(-1, 1);
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    canvas.toBlob(
+      (blob) => {
+        if (blob) {
+          setSelfieFile(
+            new File([blob], "selfie.jpg", { type: "image/jpeg" })
+          );
+        }
+        closeCamera();
+      },
+      "image/jpeg",
+      0.92
+    );
+  };
+
+  // Stop the camera if the user leaves the page
+  useEffect(() => () => stopCamera(), []);
 
   const [lightboxPhoto, setLightboxPhoto] = useState(null);
   const [downloading, setDownloading] = useState(false);
@@ -262,21 +333,13 @@ export default function GalleryPage() {
                 Face ID to find your photos.
               </p>
               <div className="mt-4 flex flex-wrap items-center gap-3">
-                {/* Direct camera capture — opens the front camera on mobile */}
-                <input
-                  id="selfie-camera-input"
-                  type="file"
-                  accept="image/*"
-                  capture="user"
-                  className="hidden"
-                  onChange={(e) => setSelfieFile(e.target.files?.[0] || null)}
-                />
-                <label
-                  htmlFor="selfie-camera-input"
-                  className="cursor-pointer rounded-xl bg-gradient-to-r from-violet-500 to-fuchsia-500 px-5 py-2 text-sm font-semibold text-white transition hover:opacity-90"
+                <button
+                  type="button"
+                  onClick={openCamera}
+                  className="rounded-xl bg-gradient-to-r from-violet-500 to-fuchsia-500 px-5 py-2 text-sm font-semibold text-white transition hover:opacity-90"
                 >
                   📸 Take selfie
-                </label>
+                </button>
                 <input
                   type="file"
                   accept="image/*"
@@ -370,6 +433,50 @@ export default function GalleryPage() {
           onDelete={handleDelete}
           deleting={deleting || downloading}
         />
+
+        {/* ---- In-page selfie camera ---- */}
+        {showCamera && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
+            <div className="w-full max-w-md overflow-hidden rounded-2xl bg-zinc-900 ring-1 ring-white/10">
+              <div className="flex items-center justify-between px-4 py-3">
+                <h3 className="font-semibold text-white">Take your selfie</h3>
+                <button
+                  onClick={closeCamera}
+                  className="rounded-lg bg-white/10 px-3 py-1 text-sm text-zinc-300 hover:bg-white/20"
+                >
+                  ✕ Close
+                </button>
+              </div>
+              {cameraError ? (
+                <div className="px-4 pb-5">
+                  <p className="rounded-xl bg-red-500/10 px-4 py-3 text-sm text-red-300 ring-1 ring-red-500/30">
+                    {cameraError}
+                  </p>
+                </div>
+              ) : (
+                <>
+                  <div className="relative bg-black">
+                    <video
+                      ref={videoRef}
+                      autoPlay
+                      playsInline
+                      muted
+                      className="h-80 w-full -scale-x-100 object-cover"
+                    />
+                  </div>
+                  <div className="flex items-center justify-center gap-3 px-4 py-4">
+                    <button
+                      onClick={capturePhoto}
+                      className="rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-500 px-8 py-3 font-semibold text-white transition hover:opacity-90"
+                    >
+                      📷 Capture
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </>
   );
