@@ -11,7 +11,7 @@ import {
   createEvent,
   listEvents,
   deleteEvent,
-  uploadEventPhotos,
+  uploadEventPhotosProgress,
   listEventPhotos,
   deletePhotoAdmin,
   editPhotoAdmin,
@@ -35,6 +35,7 @@ export default function AdminPage() {
   const [photos, setPhotos] = useState([]);
   const [photosLoading, setPhotosLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(null); // {done,total,fileName,loaded,fileTotal}
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState("");
 
@@ -134,10 +135,13 @@ export default function AdminPage() {
   const handleFiles = async (files) => {
     if (!selectedId || !files.length) return;
     setUploading(true);
+    setUploadProgress({ done: 0, total: files.length, fileName: "", loaded: 0, fileTotal: 1 });
     setError("");
     try {
-      const data = await uploadEventPhotos(selectedId, files);
-      setPhotos(data.photos || []);
+      const data = await uploadEventPhotosProgress(selectedId, files, (p) =>
+        setUploadProgress({ ...p })
+      );
+      setPhotos((prev) => [...(data.photos || []), ...prev]);
       setEvents((prev) =>
         prev.map((e) =>
           e.id === selectedId ? { ...e, photo_count: data.photo_count ?? e.photo_count } : e
@@ -147,6 +151,7 @@ export default function AdminPage() {
       setError(err.message);
     } finally {
       setUploading(false);
+      setUploadProgress(null);
     }
   };
 
@@ -431,6 +436,40 @@ export default function AdminPage() {
                           Uploading and scanning faces… this can take a while on CPU.
                         </p>
                       )}
+                      {uploading && uploadProgress && (() => {
+                        const p = uploadProgress;
+                        const frac = p.total > 0 ? (p.done + (p.fileTotal > 0 ? p.loaded / p.fileTotal : 0)) / p.total : 0;
+                        const pct = Math.min(100, Math.round(frac * 100));
+                        return (
+                          <div className="mt-4 rounded-2xl bg-white/5 p-4 ring-1 ring-white/10">
+                            <style>{`@keyframes snapfind-stripes { from { background-position: 0 0; } to { background-position: 40px 0; } }`}</style>
+                            <div className="flex items-baseline justify-between gap-2">
+                              <p className="text-sm font-semibold text-zinc-100">
+                                {p.done} of {p.total} photos uploaded
+                              </p>
+                              <p className="text-sm font-bold text-fuchsia-300">{pct}%</p>
+                            </div>
+                            <div className="mt-3 h-5 overflow-hidden rounded-full bg-white/10">
+                              <div
+                                className="h-full rounded-full transition-[width] duration-300 ease-out"
+                                style={{
+                                  width: `${pct}%`,
+                                  backgroundImage:
+                                    "linear-gradient(45deg, rgba(255,255,255,.25) 25%, transparent 25%, transparent 50%, rgba(255,255,255,.25) 50%, rgba(255,255,255,.25) 75%, transparent 75%)",
+                                  backgroundColor: "#a855f7",
+                                  backgroundSize: "40px 40px",
+                                  animation: "snapfind-stripes 0.8s linear infinite",
+                                }}
+                              />
+                            </div>
+                            {p.fileName && (
+                              <p className="mt-2 truncate text-center text-xs text-zinc-400">
+                                Uploading: {p.fileName}
+                              </p>
+                            )}
+                          </div>
+                        );
+                      })()}
                     </div>
 
                     <div className="mt-6">

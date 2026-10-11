@@ -133,6 +133,73 @@ export function uploadEventPhotos(eventId, files) {
   });
 }
 
+/**
+ * Upload photos one at a time with live progress.
+ * onProgress({ done, total, fileName, loaded, fileTotal }) is called
+ * repeatedly: byte-level progress within each file, plus file counts.
+ * Resolves with { photos: [...all uploaded], photo_count }.
+ * Sequential (not parallel) to stay gentle on the backend's memory.
+ */
+export function uploadEventPhotosProgress(eventId, files, onProgress) {
+  const list = [...files];
+  const allPhotos = [];
+  let photoCount = 0;
+  return new Promise((resolve, reject) => {
+    let done = 0;
+    const report = (file, loaded, fileTotal) =>
+      onProgress &&
+      onProgress({
+        done,
+        total: list.length,
+        fileName: file ? file.name : "",
+        loaded,
+        fileTotal,
+      });
+    const uploadOne = (idx) => {
+      if (idx >= list.length) {
+        resolve({ photos: allPhotos, photo_count: photoCount });
+        return;
+      }
+      const file = list[idx];
+      const fd = new FormData();
+      fd.append("files", file);
+      const xhr = new XMLHttpRequest();
+      xhr.open("POST", `${API_URL}/api/admin/events/${eventId}/photos`);
+      const token = getToken();
+      if (token) xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+      xhr.upload.onprogress = (e) =>
+        report(file, e.loaded, e.lengthComputable ? e.total : file.size);
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          try {
+            const data = JSON.parse(xhr.responseText);
+            allPhotos.push(...(data.photos || []));
+            photoCount = data.photo_count ?? photoCount;
+          } catch {
+            /* keep going on parse hiccups */
+          }
+          done += 1;
+          report(file, file.size, file.size);
+          uploadOne(idx + 1);
+        } else {
+          let msg = `Upload failed (HTTP ${xhr.status})`;
+          try {
+            msg = JSON.parse(xhr.responseText).error || msg;
+          } catch {
+            /* use default */
+          }
+          reject(new Error(msg));
+        }
+      };
+      xhr.onerror = () => reject(new Error("Upload failed — check your connection."));
+      xhr.ontimeout = () => reject(new Error("Upload timed out — try fewer photos at once."));
+      report(file, 0, file.size);
+      xhr.send(fd);
+    };
+    uploadOne(0);
+  });
+}
+
 // ---------- guest ----------
 
 export function uploadSelfie(file) {
