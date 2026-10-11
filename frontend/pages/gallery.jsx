@@ -27,7 +27,6 @@ export default function GalleryPage() {
   const [eventError, setEventError] = useState("");
 
   // ---- STEP 2: selfie ----
-  const [selfieFile, setSelfieFile] = useState(null);
   const [uploadingSelfie, setUploadingSelfie] = useState(false);
   const [selfieStatus, setSelfieStatus] = useState("");
   const [showRetake, setShowRetake] = useState(false);
@@ -103,10 +102,12 @@ export default function GalleryPage() {
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
     canvas.toBlob(
       (blob) => {
-        if (blob) {
-          setSelfieFile(new File([blob], "selfie.jpg", { type: "image/jpeg" }));
-        }
         closeCamera();
+        if (blob) {
+          handleSelfieUpload(
+            new File([blob], "selfie.jpg", { type: "image/jpeg" })
+          );
+        }
       },
       "image/jpeg",
       0.92
@@ -268,8 +269,8 @@ export default function GalleryPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const handleSelfieUpload = async () => {
-    if (!selfieFile) return;
+  const handleSelfieUpload = async (file) => {
+    if (!file || uploadingSelfie) return;
     setUploadingSelfie(true);
     setError("");
     try {
@@ -279,14 +280,14 @@ export default function GalleryPage() {
       setSelfieStatus("Loading face AI…");
       await loadFaceModels();
       setSelfieStatus("Scanning your selfie…");
-      const descriptor = await getSelfieDescriptor(selfieFile);
+      const descriptor = await getSelfieDescriptor(file);
       if (!descriptor) {
         throw new Error(
           "No face detected in that selfie. Try a clearer, front-facing photo."
         );
       }
       setSelfieStatus("Finding your photos…");
-      const data = await uploadSelfie(selfieFile, descriptor);
+      const data = await uploadSelfie(file, descriptor);
       const updated = data.user || user;
       setUser({ ...user, ...updated, has_selfie: true });
       try {
@@ -299,7 +300,6 @@ export default function GalleryPage() {
       }
       if (eventValid) await fetchMatches(eventValid.slug);
       setShowRetake(false);
-      setSelfieFile(null);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -474,33 +474,32 @@ export default function GalleryPage() {
                     <button
                       type="button"
                       onClick={openCamera}
-                      className="rounded-xl bg-gradient-to-r from-violet-500 to-fuchsia-500 px-5 py-2 text-sm font-semibold text-white transition hover:opacity-90"
+                      disabled={uploadingSelfie}
+                      className="rounded-xl bg-gradient-to-r from-violet-500 to-fuchsia-500 px-5 py-2 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
                     >
                       📸 Take selfie
                     </button>
                     <input
                       type="file"
                       accept="image/*"
-                      onChange={(e) =>
-                        setSelfieFile(e.target.files?.[0] || null)
-                      }
-                      className="text-sm text-zinc-400 file:mr-3 file:rounded-xl file:border-0 file:bg-white/10 file:px-4 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-white/20"
+                      disabled={uploadingSelfie}
+                      onChange={(e) => {
+                        const f = e.target.files?.[0];
+                        if (f) handleSelfieUpload(f);
+                        e.target.value = "";
+                      }}
+                      className="text-sm text-zinc-400 file:mr-3 file:rounded-xl file:border-0 file:bg-white/10 file:px-4 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-white/20 disabled:opacity-50"
                     />
-                    <button
-                      onClick={handleSelfieUpload}
-                      disabled={!selfieFile || uploadingSelfie}
-                      className="rounded-xl bg-gradient-to-r from-violet-500 to-fuchsia-500 px-5 py-2 text-sm font-semibold transition hover:opacity-90 disabled:opacity-50"
-                    >
-                      {uploadingSelfie
-                        ? selfieStatus || "Scanning face…"
-                        : "Upload selfie"}
-                    </button>
                   </div>
+                  {uploadingSelfie && (
+                    <p className="mt-3 text-sm font-medium text-fuchsia-300">
+                      {selfieStatus || "Scanning face…"} 🧠
+                    </p>
+                  )}
                   {showRetake && (
                     <button
                       onClick={() => {
                         setShowRetake(false);
-                        setSelfieFile(null);
                       }}
                       className="mt-3 text-xs text-zinc-500 underline hover:text-zinc-300"
                     >
