@@ -186,10 +186,12 @@ export function compressImage(file, maxDim = 1280, quality = 0.82) {
  * Resolves with { photos: [...all uploaded], photo_count }.
  * Sequential (not parallel) to stay gentle on the backend's memory.
  */
-export function uploadEventPhotosProgress(eventId, files, onProgress, descriptors) {
+export function uploadEventPhotosProgress(eventId, files, onProgress, descriptors, hooks) {
   const list = [...files];
   const allPhotos = [];
   let photoCount = 0;
+  // hooks: { isCancelled: () => bool, onXhr: (xhr) => void }
+  // On cancel we resolve (not reject) with the photos saved so far.
   return new Promise((resolve, reject) => {
     let done = 0;
     const report = (file, loaded, fileTotal) =>
@@ -201,7 +203,13 @@ export function uploadEventPhotosProgress(eventId, files, onProgress, descriptor
         loaded,
         fileTotal,
       });
+    const finishCancelled = () =>
+      resolve({ photos: allPhotos, photo_count: photoCount, cancelled: true });
     const uploadOne = (idx) => {
+      if (hooks && hooks.isCancelled && hooks.isCancelled()) {
+        finishCancelled();
+        return;
+      }
       if (idx >= list.length) {
         resolve({ photos: allPhotos, photo_count: photoCount });
         return;
@@ -217,8 +225,10 @@ export function uploadEventPhotosProgress(eventId, files, onProgress, descriptor
       xhr.open("POST", `${API_URL}/api/admin/events/${eventId}/photos`);
       const token = getToken();
       if (token) xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+      if (hooks && hooks.onXhr) hooks.onXhr(xhr);
       xhr.upload.onprogress = (e) =>
         report(file, e.loaded, e.lengthComputable ? e.total : file.size);
+      xhr.onabort = () => finishCancelled();
       xhr.onload = () => {
         if (xhr.status >= 200 && xhr.status < 300) {
           try {

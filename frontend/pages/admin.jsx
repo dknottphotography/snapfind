@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Head from "next/head";
 import { useRouter } from "next/router";
 import Navbar from "../components/Navbar";
@@ -37,6 +37,9 @@ export default function AdminPage() {
   const [photosLoading, setPhotosLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(null); // {done,total,fileName,loaded,fileTotal}
+  const [cancelledNote, setCancelledNote] = useState("");
+  const cancelRef = useRef(false);
+  const xhrRef = useRef(null);
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState("");
 
@@ -133,25 +136,43 @@ export default function AdminPage() {
     }
   };
 
+  const cancelUpload = () => {
+    cancelRef.current = true;
+    try {
+      xhrRef.current?.abort();
+    } catch {
+      /* ignore */
+    }
+  };
+
   const handleFiles = async (files) => {
-    if (!selectedId || !files.length) return;
+    if (!selectedId || !files.length || uploading) return;
+    cancelRef.current = false;
+    xhrRef.current = null;
     setUploading(true);
+    setCancelledNote("");
     setUploadProgress({ done: 0, total: files.length, fileName: "Preparing photos…", loaded: 0, fileTotal: 1, preparing: true });
     setError("");
+    const checkCancelled = () => {
+      if (cancelRef.current) throw new Error("__CANCELLED__");
+    };
     try {
       // Shrink photos in-browser first: 10-20x smaller uploads,
       // much faster on slow connections. No quality loss for face matching.
       const compressed = [];
       for (const f of files) {
+        checkCancelled();
         compressed.push(await compressImage(f));
       }
       // Face AI runs on-device: detect faces + compute descriptors per photo.
       const { loadFaceModels, getFaceDescriptors } = await import("../lib/faceai");
+      checkCancelled();
       await loadFaceModels((msg) =>
         setUploadProgress({ done: 0, total: compressed.length, fileName: msg, loaded: 0, fileTotal: 1, preparing: true })
       );
       const descriptors = [];
       for (let i = 0; i < compressed.length; i++) {
+        checkCancelled();
         setUploadProgress({
           done: 0, total: compressed.length,
           fileName: `Scanning faces… ${i + 1}/${compressed.length}`,
@@ -159,12 +180,17 @@ export default function AdminPage() {
         });
         descriptors.push(await getFaceDescriptors(compressed[i]));
       }
+      checkCancelled();
       setUploadProgress({ done: 0, total: compressed.length, fileName: "", loaded: 0, fileTotal: 1 });
       const data = await uploadEventPhotosProgress(
         selectedId,
         compressed,
         (p) => setUploadProgress({ ...p }),
-        descriptors
+        descriptors,
+        {
+          isCancelled: () => cancelRef.current,
+          onXhr: (xhr) => { xhrRef.current = xhr; },
+        }
       );
       setPhotos((prev) => [...(data.photos || []), ...prev]);
       setEvents((prev) =>
@@ -172,11 +198,24 @@ export default function AdminPage() {
           e.id === selectedId ? { ...e, photo_count: data.photo_count ?? e.photo_count } : e
         )
       );
+      if (data.cancelled) {
+        const saved = data.photos?.length || 0;
+        setCancelledNote(
+          saved > 0
+            ? `Upload stopped — ${saved} of ${files.length} photos were saved.`
+            : "Upload stopped before any photo was sent."
+        );
+      }
     } catch (err) {
-      setError(err.message);
+      if (err.message === "__CANCELLED__") {
+        setCancelledNote("Upload stopped.");
+      } else {
+        setError(err.message);
+      }
     } finally {
       setUploading(false);
       setUploadProgress(null);
+      xhrRef.current = null;
     }
   };
 
@@ -492,9 +531,23 @@ export default function AdminPage() {
                                 Uploading: {p.fileName}
                               </p>
                             )}
+                            <div className="mt-3 flex justify-center">
+                              <button
+                                type="button"
+                                onClick={cancelUpload}
+                                className="rounded-xl bg-red-500/15 px-5 py-2 text-sm font-semibold text-red-300 ring-1 ring-red-500/40 transition hover:bg-red-500/25"
+                              >
+                                ✕ Cancel upload
+                              </button>
+                            </div>
                           </div>
                         );
                       })()}
+                      {!uploading && cancelledNote && (
+                        <p className="mt-2 rounded-xl bg-amber-500/10 px-4 py-2.5 text-center text-sm text-amber-300 ring-1 ring-amber-500/30">
+                          {cancelledNote}
+                        </p>
+                      )}
                     </div>
 
                     <div className="mt-6">
