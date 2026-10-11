@@ -134,11 +134,16 @@ def photo_payload(photo: Photo, distance=None) -> dict:
 
 
 def make_slug(name: str) -> str:
+    """Event code = sanitized event name (no random suffix).
+    'Maya Wedding' -> 'maya-wedding'. Duplicates get -2, -3, etc.
+    """
     base = re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")[:40] or "event"
-    while True:
-        slug = f"{base}-{uuid.uuid4().hex[:6]}"
-        if not Event.query.filter_by(slug=slug).first():
-            return slug
+    slug = base
+    counter = 2
+    while Event.query.filter_by(slug=slug).first():
+        slug = f"{base}-{counter}"
+        counter += 1
+    return slug
 
 
 def build_qr_code(event: Event) -> None:

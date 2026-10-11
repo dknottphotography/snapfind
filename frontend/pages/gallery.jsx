@@ -262,6 +262,21 @@ export default function GalleryPage() {
                 Face ID to find your photos.
               </p>
               <div className="mt-4 flex flex-wrap items-center gap-3">
+                {/* Direct camera capture — opens the front camera on mobile */}
+                <input
+                  id="selfie-camera-input"
+                  type="file"
+                  accept="image/*"
+                  capture="user"
+                  className="hidden"
+                  onChange={(e) => setSelfieFile(e.target.files?.[0] || null)}
+                />
+                <label
+                  htmlFor="selfie-camera-input"
+                  className="cursor-pointer rounded-xl bg-gradient-to-r from-violet-500 to-fuchsia-500 px-5 py-2 text-sm font-semibold text-white transition hover:opacity-90"
+                >
+                  📸 Take selfie
+                </label>
                 <input
                   type="file"
                   accept="image/*"
