@@ -9,5 +9,7 @@ numpy==1.26.4
 # Face AI: RetinaFace detection + ArcFace embeddings, local CPU.
 # First run downloads the model weights (free, one-time, ~a few hundred MB).
 deepface==0.0.93
+# deepface 0.0.93 + tensorflow>=2.16 needs the standalone tf-keras package.
+tf-keras
 python-dotenv==1.0.1
 gunicorn==23.0.0
