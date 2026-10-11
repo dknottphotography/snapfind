@@ -24,7 +24,7 @@ class Config:
     SELFIE_FOLDER = os.path.join(STATIC_DIR, "selfies")   # guest "Face ID" selfies
 
     FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:3000").rstrip("/")
-    BACKEND_URL = os.environ.get("BACKEND_URL", "http://localhost:5000").rstrip("/")
+    BACKEND_URL = os.environ.get("BACKEND_URL", "").rstrip("/")
 
     # Cosine DISTANCE threshold for ArcFace matching (lower = stricter).
     # DeepFace's own default for ArcFace + cosine is 0.68.
