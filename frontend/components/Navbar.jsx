@@ -18,22 +18,22 @@ export default function Navbar() {
   };
 
   return (
-    <nav className="sticky top-0 z-40 border-b border-white/10 bg-zinc-950/80 backdrop-blur-md">
+    <nav className="sticky inset-x-0 top-0 z-40 border-b border-white/10 bg-abyss/60 backdrop-blur-xl">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6">
-        <Link href="/" className="flex items-center gap-2">
-          <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-fuchsia-500 text-lg font-bold">
+        <Link href="/" className="group flex items-center gap-2.5">
+          <span className="font-display flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-bio-teal to-uv-magenta text-base font-extrabold text-abyss shadow-[0_0_20px_rgba(45,212,191,0.45)] transition group-hover:shadow-[0_0_28px_rgba(232,121,249,0.6)]">
             S
           </span>
-          <span className="bg-gradient-to-r from-violet-300 to-fuchsia-300 bg-clip-text text-xl font-extrabold text-transparent">
-            SnapFind
+          <span className="font-display text-lg font-bold tracking-wide text-ink">
+            SnapFind <span className="text-bio-cyan">✦</span>
           </span>
         </Link>
 
-        <div className="hidden items-center gap-6 text-sm text-zinc-400 sm:flex">
-          <Link href="/" className="transition hover:text-white">
+        <div className="hidden items-center gap-7 text-sm text-inkdim sm:flex">
+          <Link href="/" className="transition hover:text-bio-cyan">
             Home
           </Link>
-          <Link href="/gallery" className="transition hover:text-white">
+          <Link href="/gallery" className="transition hover:text-bio-cyan">
             My Gallery
           </Link>
         </div>
@@ -41,12 +41,12 @@ export default function Navbar() {
         <div className="flex items-center gap-3">
           {user ? (
             <>
-              <span className="max-w-[140px] truncate text-sm text-zinc-300">
+              <span className="max-w-[140px] truncate text-sm text-inkdim">
                 {user.name}
               </span>
               <button
                 onClick={handleLogout}
-                className="rounded-xl border border-white/15 px-4 py-1.5 text-sm text-zinc-300 transition hover:border-white/30 hover:text-white"
+                className="btn-ghost rounded-xl px-4 py-1.5 text-sm font-medium"
               >
                 Logout
               </button>
@@ -54,7 +54,7 @@ export default function Navbar() {
           ) : (
             <Link
               href="/login"
-              className="rounded-xl bg-gradient-to-r from-violet-500 to-fuchsia-500 px-4 py-1.5 text-sm font-semibold text-white transition hover:opacity-90"
+              className="btn-bio rounded-xl px-5 py-1.5 text-sm"
             >
               Login
             </Link>

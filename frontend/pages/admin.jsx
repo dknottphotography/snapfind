@@ -4,6 +4,7 @@ import { useRouter } from "next/router";
 import Navbar from "../components/Navbar";
 import UploadDropzone from "../components/UploadDropzone";
 import PhotoEditor from "../components/PhotoEditor";
+import AmbientAbyss from "../components/AmbientAbyss";
 import {
   getToken,
   clearAuth,
@@ -295,7 +296,7 @@ export default function AdminPage() {
 
   if (!authChecked) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-zinc-950 text-zinc-400">
+      <div className="flex min-h-screen items-center justify-center bg-abyss text-inkdim">
         Loading…
       </div>
     );
@@ -308,13 +309,13 @@ export default function AdminPage() {
         <div className="mx-auto max-w-xl px-4 py-24 text-center text-white">
           <div className="text-5xl">🚫</div>
           <h1 className="mt-4 text-2xl font-bold">Admins only</h1>
-          <p className="mt-2 text-zinc-400">
+          <p className="mt-2 text-inkdim">
             This studio panel is for photographer accounts. Your guest gallery
             is waiting for you instead.
           </p>
           <button
             onClick={() => router.push("/gallery")}
-            className="mt-6 rounded-xl bg-gradient-to-r from-violet-500 to-fuchsia-500 px-6 py-2.5 font-semibold"
+            className="mt-6 btn-bio rounded-xl px-6 py-2.5"
           >
             Go to My Gallery
           </button>
@@ -328,14 +329,15 @@ export default function AdminPage() {
       <Head>
         <title>Photographer Studio — SnapFind</title>
       </Head>
-      <div className="min-h-screen bg-zinc-950 text-white">
+      <div className="min-h-screen bg-abyss text-ink">
+        <AmbientAbyss />
         <Navbar />
 
-        <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
+        <main className="relative z-10 mx-auto max-w-7xl px-4 py-8 sm:px-6">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold">Photographer Studio 📷</h1>
-              <p className="mt-1 text-sm text-zinc-400">
+              <h1 className="font-display text-3xl font-bold">Photographer Studio 📷</h1>
+              <p className="mt-1 text-sm text-inkdim">
                 Signed in as {me?.name} — create events, upload photos, share QR codes.
               </p>
             </div>
@@ -351,8 +353,8 @@ export default function AdminPage() {
                 onClick={() => setTab(t.id)}
                 className={`rounded-xl px-4 py-2 text-sm font-medium transition ${
                   tab === t.id
-                    ? "bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white"
-                    : "bg-white/5 text-zinc-400 hover:bg-white/10 hover:text-white"
+                    ? "btn-bio"
+                    : "glass text-inkdim hover:text-ink"
                 }`}
               >
                 {t.label}
@@ -371,7 +373,7 @@ export default function AdminPage() {
             {/* ------- LEFT COLUMN ------- */}
             <div className="space-y-6">
               {/* New event */}
-              <div className="rounded-2xl bg-white/5 p-6 ring-1 ring-white/10">
+              <div className="glass rounded-2xl p-6">
                 <h2 className="font-semibold">New event</h2>
                 <form onSubmit={handleCreateEvent} className="mt-3 flex gap-2">
                   <input
@@ -383,14 +385,14 @@ export default function AdminPage() {
                   <button
                     type="submit"
                     disabled={creating || !newName.trim()}
-                    className="rounded-xl bg-gradient-to-r from-violet-500 to-fuchsia-500 px-4 py-2.5 text-sm font-semibold transition hover:opacity-90 disabled:opacity-50"
+                    className="btn-bio rounded-xl px-4 py-2.5 text-sm disabled:opacity-50"
                   >
                     {creating ? "…" : "Create"}
                   </button>
                 </form>
 
                 {lastCreated && (
-                  <div className="mt-4 rounded-xl bg-white/5 p-4 ring-1 ring-white/10">
+                  <div className="mt-4 glass rounded-xl p-4">
                     <p className="text-sm font-semibold text-emerald-300">
                       ✅ Event created!
                     </p>
@@ -401,12 +403,12 @@ export default function AdminPage() {
                         className="h-44 w-44 rounded-xl bg-white p-2"
                       />
                     </div>
-                    <p className="mt-3 truncate text-center text-xs text-zinc-400">
+                    <p className="mt-3 truncate text-center text-xs text-inkdim">
                       {lastCreated.join_url}
                     </p>
                     <button
                       onClick={() => copyJoinLink(lastCreated.join_url)}
-                      className="mt-2 w-full rounded-xl border border-white/15 py-2 text-sm font-medium text-zinc-200 transition hover:border-white/30"
+                      className="mt-2 w-full rounded-xl border border-white/15 py-2 text-sm font-medium text-ink transition hover:border-white/30"
                     >
                       {copied ? "Copied! ✅" : "Copy join link"}
                     </button>
@@ -415,10 +417,10 @@ export default function AdminPage() {
               </div>
 
               {/* Events list */}
-              <div className="rounded-2xl bg-white/5 p-6 ring-1 ring-white/10">
+              <div className="glass rounded-2xl p-6">
                 <h2 className="font-semibold">Your events</h2>
                 {events.length === 0 ? (
-                  <p className="mt-3 text-sm text-zinc-500">
+                  <p className="mt-3 text-sm text-inkdim">
                     No events yet. Create your first one above. 🎉
                   </p>
                 ) : (
@@ -430,12 +432,12 @@ export default function AdminPage() {
                         className={`flex cursor-pointer items-center justify-between rounded-xl px-3 py-2.5 ring-1 transition ${
                           ev.id === selectedId
                             ? "bg-fuchsia-500/15 ring-fuchsia-500/40"
-                            : "bg-white/5 ring-white/10 hover:ring-white/25"
+                            : "glass hover:border-bio-cyan/40"
                         }`}
                       >
                         <div className="min-w-0">
                           <p className="truncate text-sm font-medium">{ev.name}</p>
-                          <p className="text-xs text-zinc-500">
+                          <p className="text-xs text-inkdim">
                             {ev.photo_count ?? 0} photos
                             {ev.created_at &&
                               ` · ${new Date(ev.created_at).toLocaleDateString()}`}
@@ -446,7 +448,7 @@ export default function AdminPage() {
                             e.stopPropagation();
                             handleDeleteEvent(ev.id, ev.name);
                           }}
-                          className="ml-2 rounded-lg px-2 py-1 text-sm text-zinc-500 transition hover:bg-red-500/15 hover:text-red-400"
+                          className="ml-2 rounded-lg px-2 py-1 text-sm text-inkdim transition hover:bg-red-500/15 hover:text-red-400"
                           title="Delete event"
                         >
                           🗑
@@ -460,9 +462,9 @@ export default function AdminPage() {
 
             {/* ------- RIGHT COLUMN: photos ------- */}
             <div className="lg:col-span-2">
-              <div className="rounded-2xl bg-white/5 p-6 ring-1 ring-white/10">
+              <div className="glass rounded-2xl p-6">
                 {!selectedEvent ? (
-                  <p className="py-16 text-center text-sm text-zinc-500">
+                  <p className="py-16 text-center text-sm text-inkdim">
                     Select or create an event to upload photos.
                   </p>
                 ) : (
@@ -470,7 +472,7 @@ export default function AdminPage() {
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <h2 className="font-semibold">
                         {selectedEvent.name}
-                        <span className="ml-2 text-sm font-normal text-zinc-500">
+                        <span className="ml-2 text-sm font-normal text-inkdim">
                           {photos.length} photo{photos.length === 1 ? "" : "s"}
                         </span>
                       </h2>
@@ -496,7 +498,7 @@ export default function AdminPage() {
                         }
                       />
                       {uploading && (
-                        <p className="mt-2 text-center text-sm text-zinc-400">
+                        <p className="mt-2 text-center text-sm text-inkdim">
                           Uploading and scanning faces… this can take a while on CPU.
                         </p>
                       )}
@@ -508,7 +510,7 @@ export default function AdminPage() {
                           <div className="mt-4 rounded-2xl bg-white/5 p-4 ring-1 ring-white/10">
                             <style>{`@keyframes snapfind-stripes { from { background-position: 0 0; } to { background-position: 40px 0; } }`}</style>
                             <div className="flex items-baseline justify-between gap-2">
-                              <p className="text-sm font-semibold text-zinc-100">
+                              <p className="text-sm font-semibold text-ink">
                                 {p.done} of {p.total} photos uploaded
                               </p>
                               <p className="text-sm font-bold text-fuchsia-300">{pct}%</p>
@@ -520,14 +522,14 @@ export default function AdminPage() {
                                   width: `${pct}%`,
                                   backgroundImage:
                                     "linear-gradient(45deg, rgba(255,255,255,.25) 25%, transparent 25%, transparent 50%, rgba(255,255,255,.25) 50%, rgba(255,255,255,.25) 75%, transparent 75%)",
-                                  backgroundColor: "#a855f7",
+                                  backgroundColor: "#2dd4bf",
                                   backgroundSize: "40px 40px",
                                   animation: "snapfind-stripes 0.8s linear infinite",
                                 }}
                               />
                             </div>
                             {p.fileName && (
-                              <p className="mt-2 truncate text-center text-xs text-zinc-400">
+                              <p className="mt-2 truncate text-center text-xs text-inkdim">
                                 Uploading: {p.fileName}
                               </p>
                             )}
@@ -552,11 +554,11 @@ export default function AdminPage() {
 
                     <div className="mt-6">
                       {photosLoading ? (
-                        <p className="py-8 text-center text-sm text-zinc-500">
+                        <p className="py-8 text-center text-sm text-inkdim">
                           Loading photos…
                         </p>
                       ) : photos.length === 0 ? (
-                        <p className="py-8 text-center text-sm text-zinc-500">
+                        <p className="py-8 text-center text-sm text-inkdim">
                           No photos yet — upload some above. 📸
                         </p>
                       ) : (
@@ -584,12 +586,12 @@ export default function AdminPage() {
                               </button>
                               <button
                                 onClick={() => setEditingPhoto(p)}
-                                className="absolute right-2 top-9 rounded-full bg-black/70 px-2 py-0.5 text-xs text-zinc-200 opacity-0 transition group-hover:opacity-100"
+                                className="absolute right-2 top-9 rounded-full bg-black/70 px-2 py-0.5 text-xs text-ink opacity-0 transition group-hover:opacity-100"
                                 title="Edit photo (rotate / flip)"
                               >
                                 ✏️
                               </button>
-                              <p className="truncate bg-black/60 px-2 py-1 text-[11px] text-zinc-300">
+                              <p className="truncate bg-black/60 px-2 py-1 text-[11px] text-inkdim">
                                 {p.filename}
                               </p>
                             </div>
@@ -605,34 +607,34 @@ export default function AdminPage() {
           )}
 
           {tab === "users" && (
-            <div className="mt-6 rounded-2xl bg-white/5 p-6 ring-1 ring-white/10">
+            <div className="mt-6 glass rounded-2xl p-6">
               <div className="flex items-center justify-between">
                 <h2 className="font-semibold">User access control</h2>
                 <button
                   onClick={refreshUsers}
-                  className="rounded-xl bg-white/10 px-3 py-1.5 text-xs font-medium text-zinc-300 hover:bg-white/15"
+                  className="rounded-xl bg-white/10 px-3 py-1.5 text-xs font-medium text-inkdim hover:bg-white/15"
                 >
                   ↻ Refresh
                 </button>
               </div>
-              <p className="mt-1 text-sm text-zinc-500">
+              <p className="mt-1 text-sm text-inkdim">
                 Grant or revoke access for any user — revoked users can&apos;t
                 sign in. You can&apos;t change your own account.
               </p>
               <div className="mt-4">
                 {usersLoading ? (
-                  <p className="py-8 text-center text-sm text-zinc-500">
+                  <p className="py-8 text-center text-sm text-inkdim">
                     Loading users…
                   </p>
                 ) : users.length === 0 ? (
-                  <p className="py-8 text-center text-sm text-zinc-500">
+                  <p className="py-8 text-center text-sm text-inkdim">
                     No users yet.
                   </p>
                 ) : (
                   <div className="overflow-x-auto">
                     <table className="w-full text-left text-sm">
                       <thead>
-                        <tr className="text-xs uppercase tracking-wide text-zinc-500">
+                        <tr className="text-xs uppercase tracking-wide text-inkdim">
                           <th className="pb-2 pr-4 font-medium">User</th>
                           <th className="pb-2 pr-4 font-medium">Role</th>
                           <th className="pb-2 pr-4 font-medium">Status</th>
@@ -646,19 +648,19 @@ export default function AdminPage() {
                               <p className="font-medium text-white">
                                 {u.name}{" "}
                                 {u.id === me?.id && (
-                                  <span className="text-xs font-normal text-zinc-500">
+                                  <span className="text-xs font-normal text-inkdim">
                                     (you)
                                   </span>
                                 )}
                               </p>
-                              <p className="text-xs text-zinc-500">{u.email}</p>
+                              <p className="text-xs text-inkdim">{u.email}</p>
                             </td>
                             <td className="py-3 pr-4">
                               <span
                                 className={`rounded-full px-2 py-0.5 text-xs font-medium ${
                                   u.role === "admin"
                                     ? "bg-fuchsia-500/15 text-fuchsia-300"
-                                    : "bg-white/10 text-zinc-300"
+                                    : "bg-white/10 text-inkdim"
                                 }`}
                               >
                                 {u.role}

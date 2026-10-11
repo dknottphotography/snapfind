@@ -3,6 +3,7 @@ import Head from "next/head";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import Navbar from "../components/Navbar";
+import AmbientAbyss from "../components/AmbientAbyss";
 import { signup, saveAuth, getToken, getUser } from "../lib/api";
 
 export default function SignupPage() {
@@ -42,15 +43,17 @@ export default function SignupPage() {
       <Head>
         <title>Sign up — SnapFind</title>
       </Head>
-      <div className="min-h-screen bg-zinc-950 text-white">
+      <div className="min-h-screen bg-abyss text-ink">
+        <AmbientAbyss />
         <Navbar />
-        <main className="mx-auto flex max-w-md items-center justify-center px-4 py-20">
+        <main className="relative z-10 mx-auto flex max-w-md items-center justify-center px-4 py-20">
           <form
             onSubmit={handleSubmit}
-            className="w-full rounded-2xl bg-white/5 p-8 ring-1 ring-white/10"
+            className="glass-deep w-full rounded-3xl p-8"
           >
-            <h1 className="text-2xl font-bold">Create your account 🎉</h1>
-            <p className="mt-1 text-sm text-zinc-400">
+            <p className="eyebrow">✦ &nbsp;Join the abyss</p>
+            <h1 className="font-display mt-3 text-2xl font-bold">Create your account</h1>
+            <p className="mt-1 text-sm text-inkdim">
               One account works for every event.
             </p>
 
@@ -60,43 +63,43 @@ export default function SignupPage() {
               </div>
             )}
 
-            <label className="mt-6 block text-sm font-medium text-zinc-300">
+            <label className="mt-6 block text-sm font-medium text-inkdim">
               Name
               <input
                 type="text"
                 required
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="mt-1 w-full rounded-xl border border-white/10 bg-zinc-900 px-4 py-2.5 text-white outline-none transition focus:border-fuchsia-500"
+                className="mt-1 w-full rounded-xl border border-white/10 bg-abyss/60 px-4 py-2.5 text-ink outline-none transition focus:border-bio-cyan"
                 placeholder="Your name"
               />
             </label>
 
-            <label className="mt-4 block text-sm font-medium text-zinc-300">
+            <label className="mt-4 block text-sm font-medium text-inkdim">
               Email
               <input
                 type="email"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="mt-1 w-full rounded-xl border border-white/10 bg-zinc-900 px-4 py-2.5 text-white outline-none transition focus:border-fuchsia-500"
+                className="mt-1 w-full rounded-xl border border-white/10 bg-abyss/60 px-4 py-2.5 text-ink outline-none transition focus:border-bio-cyan"
                 placeholder="you@example.com"
               />
             </label>
 
-            <label className="mt-4 block text-sm font-medium text-zinc-300">
+            <label className="mt-4 block text-sm font-medium text-inkdim">
               Phone number
               <input
                 type="tel"
                 required
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                className="mt-1 w-full rounded-xl border border-white/10 bg-zinc-900 px-4 py-2.5 text-white outline-none transition focus:border-fuchsia-500"
+                className="mt-1 w-full rounded-xl border border-white/10 bg-abyss/60 px-4 py-2.5 text-ink outline-none transition focus:border-bio-cyan"
                 placeholder="+91 98765 43210"
               />
             </label>
 
-            <label className="mt-4 block text-sm font-medium text-zinc-300">
+            <label className="mt-4 block text-sm font-medium text-inkdim">
               Password
               <div className="relative mt-1">
                 <input
@@ -105,13 +108,13 @@ export default function SignupPage() {
                   minLength={6}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full rounded-xl border border-white/10 bg-zinc-900 px-4 py-2.5 pr-12 text-white outline-none transition focus:border-fuchsia-500"
+                  className="w-full rounded-xl border border-white/10 bg-abyss/60 px-4 py-2.5 pr-12 text-ink outline-none transition focus:border-bio-cyan"
                   placeholder="At least 6 characters"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword((v) => !v)}
-                  className="absolute inset-y-0 right-0 px-4 text-sm font-medium text-zinc-400 transition hover:text-white"
+                  className="absolute inset-y-0 right-0 px-4 text-sm font-medium text-inkdim transition hover:text-bio-cyan"
                   aria-label={showPassword ? "Hide password" : "Show password"}
                 >
                   {showPassword ? "Hide" : "Show"}
@@ -122,14 +125,14 @@ export default function SignupPage() {
             <button
               type="submit"
               disabled={loading}
-              className="mt-6 w-full rounded-xl bg-gradient-to-r from-violet-500 to-fuchsia-500 py-3 font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
+              className="btn-bio mt-6 w-full rounded-xl py-3 disabled:opacity-50"
             >
               {loading ? "Creating account…" : "Create account"}
             </button>
 
-            <p className="mt-4 text-center text-sm text-zinc-400">
+            <p className="mt-4 text-center text-sm text-inkdim">
               Already have one?{" "}
-              <Link href="/login" className="font-semibold text-fuchsia-300 hover:underline">
+              <Link href="/login" className="font-semibold text-bio-cyan hover:underline">
                 Log in
               </Link>
             </p>

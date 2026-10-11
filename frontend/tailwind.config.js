@@ -8,15 +8,28 @@ module.exports = {
     extend: {
       fontFamily: {
         sans: [
-          "Inter",
+          "Space Grotesk",
           "system-ui",
           "-apple-system",
           "Segoe UI",
           "Roboto",
-          "Helvetica Neue",
-          "Arial",
           "sans-serif",
         ],
+        display: ["Unbounded", "Space Grotesk", "system-ui", "sans-serif"],
+      },
+      colors: {
+        abyss: "#040110",
+        abyss2: "#0a0620",
+        bio: {
+          cyan: "#67e8f9",
+          teal: "#2dd4bf",
+        },
+        uv: {
+          magenta: "#e879f9",
+          violet: "#a78bfa",
+        },
+        ember: "#fbbf24",
+        inkdim: "#a7a3c7",
       },
     },
   },

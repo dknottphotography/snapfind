@@ -3,6 +3,7 @@ import Head from "next/head";
 import { useRouter } from "next/router";
 import Navbar from "../components/Navbar";
 import Lightbox from "../components/Lightbox";
+import AmbientAbyss from "../components/AmbientAbyss";
 import {
   getToken,
   clearAuth,
@@ -342,7 +343,7 @@ export default function GalleryPage() {
 
   if (!authChecked) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-zinc-950 text-zinc-400">
+      <div className="flex min-h-screen items-center justify-center bg-zinc-950 text-inkdim">
         Loading…
       </div>
     );
@@ -356,12 +357,13 @@ export default function GalleryPage() {
       <Head>
         <title>My Gallery — SnapFind</title>
       </Head>
-      <div className="min-h-screen bg-zinc-950 text-white">
+      <div className="min-h-screen bg-abyss text-ink">
+        <AmbientAbyss />
         <Navbar />
 
-        <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
-          <h1 className="text-3xl font-bold">My Gallery 🖼️</h1>
-          <p className="mt-1 text-sm text-zinc-400">
+        <main className="relative z-10 mx-auto max-w-6xl px-4 py-8 sm:px-6">
+          <h1 className="font-display text-3xl font-bold">My Gallery <span className="text-bio-cyan">✦</span></h1>
+          <p className="mt-1 text-sm text-inkdim">
             Hi {user?.name} — find the photos you&apos;re in with your Face ID.
           </p>
 
@@ -372,9 +374,9 @@ export default function GalleryPage() {
           )}
 
           {/* ---- STEP 1: find the event ---- */}
-          <div className="mt-6 rounded-2xl bg-white/5 p-6 ring-1 ring-white/10">
-            <h2 className="font-semibold">
-              <span className="mr-2 inline-flex h-6 w-6 items-center justify-center rounded-lg bg-gradient-to-br from-violet-500 to-fuchsia-500 text-xs font-bold">
+          <div className="mt-6 glass rounded-2xl p-6">
+            <h2 className="font-display text-lg font-semibold">
+              <span className="mr-2 inline-flex h-6 w-6 items-center justify-center rounded-lg bg-gradient-to-br from-bio-teal to-uv-magenta text-xs font-bold">
                 1
               </span>
               Find your event
@@ -388,12 +390,12 @@ export default function GalleryPage() {
                   setEventError("");
                 }}
                 placeholder="e.g. ananyas-wedding"
-                className="min-w-0 flex-1 rounded-xl border border-white/10 bg-zinc-900 px-4 py-2.5 text-sm outline-none transition focus:border-fuchsia-500"
+                className="min-w-0 flex-1 rounded-xl border border-white/10 bg-abyss/60 px-4 py-2.5 text-sm text-ink outline-none transition focus:border-bio-cyan"
               />
               <button
                 type="button"
                 onClick={startQrScan}
-                className="shrink-0 rounded-xl bg-white/10 px-4 py-2.5 text-sm font-semibold text-zinc-200 transition hover:bg-white/20"
+                className="shrink-0 rounded-xl bg-white/10 px-4 py-2.5 text-sm font-semibold text-ink transition hover:bg-white/20"
                 title="Scan the event QR code"
               >
                 📷 Scan QR
@@ -401,7 +403,7 @@ export default function GalleryPage() {
               <button
                 type="submit"
                 disabled={validatingEvent || !eventSlug.trim()}
-                className="shrink-0 rounded-xl bg-gradient-to-r from-violet-500 to-fuchsia-500 px-5 py-2.5 text-sm font-semibold transition hover:opacity-90 disabled:opacity-50"
+                className="shrink-0 rounded-xl btn-bio rounded-xl px-5 py-2.5 text-sm disabled:opacity-50"
               >
                 {validatingEvent ? "Checking…" : "Find event"}
               </button>
@@ -421,7 +423,7 @@ export default function GalleryPage() {
                 <button
                   onClick={handleRefresh}
                   disabled={loading}
-                  className="shrink-0 text-xs text-zinc-400 underline hover:text-zinc-200 disabled:opacity-50"
+                  className="shrink-0 text-xs text-inkdim underline hover:text-ink disabled:opacity-50"
                 >
                   ⟳ Refresh results
                 </button>
@@ -444,14 +446,14 @@ export default function GalleryPage() {
                   <p className="text-sm font-semibold text-emerald-300">
                     ✅ Face ID verified
                   </p>
-                  <p className="text-xs text-zinc-400">
+                  <p className="text-xs text-inkdim">
                     Your face is registered — AI matching is active for every
                     event you join. Not finding yourself? Try a clearer selfie.
                   </p>
                 </div>
                 <button
                   onClick={() => setShowRetake(true)}
-                  className="shrink-0 rounded-xl bg-white/10 px-4 py-2 text-xs font-medium text-zinc-200 hover:bg-white/15"
+                  className="shrink-0 rounded-xl bg-white/10 px-4 py-2 text-xs font-medium text-ink hover:bg-white/15"
                 >
                   Retake
                 </button>
@@ -459,14 +461,14 @@ export default function GalleryPage() {
             ) : (
               user &&
               (!user.has_selfie || showRetake) && (
-                <div className="mt-4 rounded-2xl bg-white/5 p-6 ring-1 ring-white/10">
-                  <h2 className="font-semibold">
-                    <span className="mr-2 inline-flex h-6 w-6 items-center justify-center rounded-lg bg-gradient-to-br from-violet-500 to-fuchsia-500 text-xs font-bold">
+                <div className="mt-4 glass rounded-2xl p-6">
+                  <h2 className="font-display text-lg font-semibold">
+                    <span className="mr-2 inline-flex h-6 w-6 items-center justify-center rounded-lg bg-gradient-to-br from-bio-teal to-uv-magenta text-xs font-bold">
                       2
                     </span>
                     Check in with a selfie 🤳
                   </h2>
-                  <p className="mt-1 text-sm text-zinc-400">
+                  <p className="mt-1 text-sm text-inkdim">
                     Upload one clear, front-facing selfie. Our AI uses it as
                     your Face ID to find your photos.
                   </p>
@@ -475,7 +477,7 @@ export default function GalleryPage() {
                       type="button"
                       onClick={openCamera}
                       disabled={uploadingSelfie}
-                      className="rounded-xl bg-gradient-to-r from-violet-500 to-fuchsia-500 px-5 py-2 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
+                      className="rounded-xl btn-bio rounded-xl px-5 py-2 text-sm disabled:opacity-50"
                     >
                       📸 Take selfie
                     </button>
@@ -488,7 +490,7 @@ export default function GalleryPage() {
                         if (f) handleSelfieUpload(f);
                         e.target.value = "";
                       }}
-                      className="text-sm text-zinc-400 file:mr-3 file:rounded-xl file:border-0 file:bg-white/10 file:px-4 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-white/20 disabled:opacity-50"
+                      className="text-sm text-inkdim file:mr-3 file:rounded-xl file:border-0 file:bg-white/10 file:px-4 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-white/20 disabled:opacity-50"
                     />
                   </div>
                   {uploadingSelfie && (
@@ -501,7 +503,7 @@ export default function GalleryPage() {
                       onClick={() => {
                         setShowRetake(false);
                       }}
-                      className="mt-3 text-xs text-zinc-500 underline hover:text-zinc-300"
+                      className="mt-3 text-xs text-inkdim underline hover:text-inkdim"
                     >
                       Cancel retake
                     </button>
@@ -512,31 +514,31 @@ export default function GalleryPage() {
 
           {/* ---- STEP 3: matches (only after event + selfie) ---- */}
           {eventValid && user?.has_selfie && (
-            <div className="mt-4 rounded-2xl bg-white/5 p-6 ring-1 ring-white/10">
-              <h2 className="font-semibold">
-                <span className="mr-2 inline-flex h-6 w-6 items-center justify-center rounded-lg bg-gradient-to-br from-violet-500 to-fuchsia-500 text-xs font-bold">
+            <div className="mt-4 glass rounded-2xl p-6">
+              <h2 className="font-display text-lg font-semibold">
+                <span className="mr-2 inline-flex h-6 w-6 items-center justify-center rounded-lg bg-gradient-to-br from-bio-teal to-uv-magenta text-xs font-bold">
                   3
                 </span>
                 Your matched photos
                 {resultsCurrent && matches.length > 0 && (
-                  <span className="ml-2 text-sm font-normal text-zinc-500">
+                  <span className="ml-2 text-sm font-normal text-inkdim">
                     {matches.length} found
                   </span>
                 )}
               </h2>
 
               {loading ? (
-                <p className="py-10 text-center text-sm text-zinc-500">
+                <p className="py-10 text-center text-sm text-inkdim">
                   Scanning photos for your face… 🧠
                 </p>
               ) : !resultsCurrent ? (
-                <p className="py-10 text-center text-sm text-zinc-500">
+                <p className="py-10 text-center text-sm text-inkdim">
                   Searching your photos… 🔍
                 </p>
               ) : matches.length === 0 ? (
                 <div className="py-10 text-center">
                   <div className="text-4xl">🕵️</div>
-                  <p className="mt-3 text-sm text-zinc-400">
+                  <p className="mt-3 text-sm text-inkdim">
                     No matches yet — try a clearer, front-facing selfie.
                   </p>
                 </div>
@@ -557,7 +559,7 @@ export default function GalleryPage() {
                       <span className="absolute left-2 top-2 rounded-full bg-emerald-500/90 px-2 py-0.5 text-xs font-semibold text-white">
                         {Math.round(m.score ?? 0)}% match
                       </span>
-                      <span className="absolute inset-x-0 bottom-0 bg-black/60 px-2 py-1 text-[11px] text-zinc-300 opacity-0 transition group-hover:opacity-100">
+                      <span className="absolute inset-x-0 bottom-0 bg-black/60 px-2 py-1 text-[11px] text-inkdim opacity-0 transition group-hover:opacity-100">
                         Click to view ⤢
                       </span>
                     </button>
@@ -579,12 +581,12 @@ export default function GalleryPage() {
         {/* ---- In-page selfie camera ---- */}
         {showCamera && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
-            <div className="w-full max-w-md overflow-hidden rounded-2xl bg-zinc-900 ring-1 ring-white/10">
+            <div className="glass-deep w-full max-w-md overflow-hidden rounded-2xl">
               <div className="flex items-center justify-between px-4 py-3">
                 <h3 className="font-semibold text-white">Take your selfie</h3>
                 <button
                   onClick={closeCamera}
-                  className="rounded-lg bg-white/10 px-3 py-1 text-sm text-zinc-300 hover:bg-white/20"
+                  className="rounded-lg bg-white/10 px-3 py-1 text-sm text-inkdim hover:bg-white/20"
                 >
                   ✕ Close
                 </button>
@@ -609,7 +611,7 @@ export default function GalleryPage() {
                   <div className="flex items-center justify-center gap-3 px-4 py-4">
                     <button
                       onClick={capturePhoto}
-                      className="rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-500 px-8 py-3 font-semibold text-white transition hover:opacity-90"
+                      className="rounded-full btn-bio rounded-full px-8 py-3 font-semibold"
                     >
                       📷 Capture
                     </button>
@@ -623,12 +625,12 @@ export default function GalleryPage() {
         {/* ---- QR scanner ---- */}
         {showQrScanner && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
-            <div className="w-full max-w-md overflow-hidden rounded-2xl bg-zinc-900 ring-1 ring-white/10">
+            <div className="glass-deep w-full max-w-md overflow-hidden rounded-2xl">
               <div className="flex items-center justify-between px-4 py-3">
                 <h3 className="font-semibold text-white">Scan event QR</h3>
                 <button
                   onClick={stopQrScan}
-                  className="rounded-lg bg-white/10 px-3 py-1 text-sm text-zinc-300 hover:bg-white/20"
+                  className="rounded-lg bg-white/10 px-3 py-1 text-sm text-inkdim hover:bg-white/20"
                 >
                   ✕ Close
                 </button>
@@ -644,7 +646,7 @@ export default function GalleryPage() {
                       id="qr-reader"
                       className="overflow-hidden rounded-xl"
                     />
-                    <p className="mt-3 text-center text-xs text-zinc-500">
+                    <p className="mt-3 text-center text-xs text-inkdim">
                       Point your camera at the event QR code
                     </p>
                   </>
