@@ -639,11 +639,21 @@ export default function AdminPage() {
                 </button>
               </div>
               <p className="mt-1 text-sm text-inkdim">
-                Grant or revoke access for any user — revoked users can&apos;t
-                sign in. Promote trusted photographers to{" "}
-                <span className="text-bio-cyan">admin</span> so they can upload
-                event photos from their own accounts. You can&apos;t change
-                your own account.
+                {me?.is_owner ? (
+                  <>
+                    As the main admin you can promote guests to{" "}
+                    <span className="text-bio-cyan">admin</span>, remove admin
+                    access, or grant/revoke sign-in access. Your own account
+                    can&apos;t be changed by anyone.
+                  </>
+                ) : (
+                  <>
+                    You can promote guests to{" "}
+                    <span className="text-bio-cyan">admin</span> so they can
+                    upload from their own accounts. Only the main admin can
+                    remove access or revoke accounts.
+                  </>
+                )}
               </p>
               <div className="mt-4">
                 {usersLoading ? (
@@ -687,7 +697,7 @@ export default function AdminPage() {
                                     : "bg-white/10 text-inkdim"
                                 }`}
                               >
-                                {u.role}
+                                {u.is_owner ? "owner" : u.role}
                               </span>
                             </td>
                             <td className="py-3 pr-4">
@@ -702,28 +712,37 @@ export default function AdminPage() {
                               </span>
                             </td>
                             <td className="py-3 text-right">
-                              {u.id !== me?.id ? (
+                              {u.id !== me?.id && !u.is_owner ? (
                                 <div className="flex justify-end gap-2">
-                                  <button
-                                    onClick={() => handleToggleRole(u)}
-                                    className={`rounded-lg px-3 py-1 text-xs font-medium ${
-                                      u.role === "admin"
-                                        ? "bg-bio-teal/10 text-bio-cyan hover:bg-bio-teal/20"
-                                        : "bg-uv-magenta/10 text-uv-magenta hover:bg-uv-magenta/20"
-                                    }`}
-                                  >
-                                    {u.role === "admin" ? "Remove admin" : "Make admin"}
-                                  </button>
-                                  <button
-                                    onClick={() => handleToggleActive(u)}
-                                    className={`rounded-lg px-3 py-1 text-xs font-medium ${
-                                      u.is_active
-                                        ? "bg-red-500/10 text-red-300 hover:bg-red-500/20"
-                                        : "bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20"
-                                    }`}
-                                  >
-                                    {u.is_active ? "Revoke access" : "Grant access"}
-                                  </button>
+                                  {u.role !== "admin" ? (
+                                    <button
+                                      onClick={() => handleToggleRole(u)}
+                                      className="rounded-lg bg-uv-magenta/10 px-3 py-1 text-xs font-medium text-uv-magenta hover:bg-uv-magenta/20"
+                                    >
+                                      Make admin
+                                    </button>
+                                  ) : (
+                                    me?.is_owner && (
+                                      <button
+                                        onClick={() => handleToggleRole(u)}
+                                        className="rounded-lg bg-bio-teal/10 px-3 py-1 text-xs font-medium text-bio-cyan hover:bg-bio-teal/20"
+                                      >
+                                        Remove admin
+                                      </button>
+                                    )
+                                  )}
+                                  {me?.is_owner && (
+                                    <button
+                                      onClick={() => handleToggleActive(u)}
+                                      className={`rounded-lg px-3 py-1 text-xs font-medium ${
+                                        u.is_active
+                                          ? "bg-red-500/10 text-red-300 hover:bg-red-500/20"
+                                          : "bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20"
+                                      }`}
+                                    >
+                                      {u.is_active ? "Revoke access" : "Grant access"}
+                                    </button>
+                                  )}
                                 </div>
                               ) : (
                                 <span className="text-xs text-zinc-600">—</span>

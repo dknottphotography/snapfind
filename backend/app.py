@@ -85,6 +85,13 @@ def admin_required(fn):
     return wrapper
 
 
+def is_owner(user) -> bool:
+    """The main admin: the seeded ADMIN_EMAIL account. Untouchable by anyone."""
+    return (user.email or "").strip().lower() == (
+        app.config.get("ADMIN_EMAIL") or ""
+    ).strip().lower()
+
+
 # ---------------------------------------------------------------- payloads
 def _public_base() -> str:
     """Absolute base URL for links/QR codes.
@@ -227,7 +234,9 @@ def login():
 @app.get("/api/auth/me")
 @login_required
 def me():
-    return jsonify({"user": request.current_user.to_dict()})
+    u = request.current_user.to_dict()
+    u["is_owner"] = is_owner(request.current_user)
+    return jsonify({"user": u})
 
 
 # ---------------------------------------------------------------- admin: events
@@ -386,40 +395,65 @@ def edit_photo_admin(photo_id):
 @admin_required
 def list_users():
     users = User.query.order_by(User.created_at.desc()).all()
-    return jsonify({"users": [u.to_dict() for u in users]})
+    out = []
+    for u in users:
+        d = u.to_dict()
+        d["is_owner"] = is_owner(u)
+        out.append(d)
+    return jsonify({"users": out})
 
 
 @app.patch("/api/admin/users/<int:user_id>")
 @admin_required
 def update_user(user_id):
-    """Grant/revoke access (is_active) and promote/demote (role) a user.
-    Admins can promote trusted photographers to admin so they can upload
-    event photos from their own accounts."""
+    """User management with an owner hierarchy.
+
+    - The main admin (owner, ADMIN_EMAIL) cannot be changed by anyone.
+    - Only the owner can grant/revoke access (is_active) or demote admins.
+    - Promoted admins can only promote guests to admin — nothing else.
+    """
     me = request.current_user
     user = User.query.get_or_404(user_id)
     if user.id == me.id:
         return jsonify({"error": "You cannot change your own account."}), 400
+    if is_owner(user):
+        return jsonify({"error": "The main admin account cannot be changed."}), 403
     data = request.get_json(force=True, silent=True) or {}
+    me_is_owner = is_owner(me)
     changed = False
+
     if "is_active" in data:
+        if not me_is_owner:
+            return jsonify({"error": "Only the main admin can grant or revoke access."}), 403
         user.is_active = bool(data["is_active"])
         changed = True
+
     if "role" in data:
         role = str(data["role"]).strip().lower()
         if role not in ("admin", "guest"):
             return jsonify({"error": "Role must be 'admin' or 'guest'."}), 400
-        if user.role == "admin" and role != "admin":
-            remaining = User.query.filter(
-                User.role == "admin", User.id != user.id
-            ).count()
-            if remaining == 0:
-                return jsonify({"error": "You cannot demote the last admin."}), 400
-        user.role = role
-        changed = True
+        if role != user.role:
+            if role == "admin":
+                if user.role != "guest":
+                    return jsonify({"error": "Only guests can be promoted."}), 400
+                # owner or promoted admin may promote a guest
+            else:
+                if not me_is_owner:
+                    return jsonify({"error": "Only the main admin can remove admin access."}), 403
+                remaining = User.query.filter(
+                    User.role == "admin", User.id != user.id
+                ).count()
+                if remaining == 0:
+                    return jsonify({"error": "You cannot demote the last admin."}), 400
+            user.role = role
+            changed = True
+
     if not changed:
         return jsonify({"error": "Nothing to update. Send {is_active} and/or {role}."}), 400
     db.session.commit()
-    return jsonify({"user": user.to_dict()})
+    d = user.to_dict()
+    d["is_owner"] = is_owner(user)
+    return jsonify({"user": d})
 
 
 # ---------------------------------------------------------------- guest: selfie + matches
