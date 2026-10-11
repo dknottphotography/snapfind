@@ -7,6 +7,7 @@ import {
   getToken,
   clearAuth,
   fetchMe,
+  getEventPublic,
   getMatches,
   uploadSelfie,
   deleteGuestPhoto,
@@ -19,22 +20,39 @@ export default function GalleryPage() {
   const [user, setUser] = useState(null);
   const [authChecked, setAuthChecked] = useState(false);
 
+  // ---- STEP 1: event ----
   const [eventSlug, setEventSlug] = useState("");
-  const [matches, setMatches] = useState([]);
-  const [searched, setSearched] = useState(false);
-  const [searchedSlug, setSearchedSlug] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [eventValid, setEventValid] = useState(null); // event object once verified
+  const [validatingEvent, setValidatingEvent] = useState(false);
+  const [eventError, setEventError] = useState("");
 
+  // ---- STEP 2: selfie ----
   const [selfieFile, setSelfieFile] = useState(null);
   const [uploadingSelfie, setUploadingSelfie] = useState(false);
   const [selfieStatus, setSelfieStatus] = useState("");
   const [showRetake, setShowRetake] = useState(false);
 
-  // ---- in-page camera ----
+  // ---- STEP 3: matches ----
+  const [matches, setMatches] = useState([]);
+  const [searched, setSearched] = useState(false);
+  const [searchedSlug, setSearchedSlug] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const [lightboxPhoto, setLightboxPhoto] = useState(null);
+  const [downloading, setDownloading] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [error, setError] = useState("");
+
+  // ---- in-page selfie camera ----
   const [showCamera, setShowCamera] = useState(false);
   const [cameraError, setCameraError] = useState("");
   const videoRef = useRef(null);
   const streamRef = useRef(null);
+
+  // ---- QR scanner ----
+  const [showQrScanner, setShowQrScanner] = useState(false);
+  const [qrError, setQrError] = useState("");
+  const qrScannerRef = useRef(null);
 
   const stopCamera = () => {
     try {
@@ -80,16 +98,13 @@ export default function GalleryPage() {
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
     const ctx = canvas.getContext("2d");
-    // Mirror horizontally so the capture matches the selfie preview
     ctx.translate(canvas.width, 0);
     ctx.scale(-1, 1);
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
     canvas.toBlob(
       (blob) => {
         if (blob) {
-          setSelfieFile(
-            new File([blob], "selfie.jpg", { type: "image/jpeg" })
-          );
+          setSelfieFile(new File([blob], "selfie.jpg", { type: "image/jpeg" }));
         }
         closeCamera();
       },
@@ -98,15 +113,128 @@ export default function GalleryPage() {
     );
   };
 
-  // Stop the camera if the user leaves the page
   useEffect(() => () => stopCamera(), []);
 
-  const [lightboxPhoto, setLightboxPhoto] = useState(null);
-  const [downloading, setDownloading] = useState(false);
-  const [deleting, setDeleting] = useState(false);
-  const [error, setError] = useState("");
+  // ---- STEP 1: verify the event exists before anything else ----
+  const validateEvent = async (slug, afterUser) => {
+    const s = (slug || "").trim();
+    if (!s) return;
+    setValidatingEvent(true);
+    setEventError("");
+    setError("");
+    try {
+      const data = await getEventPublic(s);
+      setEventValid(data.event);
+      try {
+        localStorage.setItem("eventSlug", s);
+      } catch {
+        /* ignore */
+      }
+      // If the user already has a Face ID, jump straight to their photos.
+      const me = afterUser || user;
+      if (me?.has_selfie) {
+        await fetchMatches(s);
+      }
+    } catch (err) {
+      setEventValid(null);
+      setEventError("Event not found — check the code and try again.");
+    } finally {
+      setValidatingEvent(false);
+    }
+  };
 
-  // ---- auth guard + restore event slug ----
+  const handleFindEvent = (e) => {
+    e.preventDefault();
+    validateEvent(eventSlug);
+  };
+
+  // ---- QR scanning ----
+  const extractSlug = (text) => {
+    const t = (text || "").trim();
+    if (!t) return null;
+    try {
+      const url = new URL(t);
+      const s = url.searchParams.get("event");
+      if (s) return s;
+    } catch {
+      /* not a URL — maybe a raw slug */
+    }
+    if (/^[a-z0-9-]{2,60}$/i.test(t)) return t.toLowerCase();
+    return null;
+  };
+
+  const stopQrScan = async () => {
+    try {
+      await qrScannerRef.current?.stop();
+    } catch {
+      /* ignore */
+    }
+    try {
+      qrScannerRef.current?.clear();
+    } catch {
+      /* ignore */
+    }
+    qrScannerRef.current = null;
+    setShowQrScanner(false);
+  };
+
+  const startQrScan = async () => {
+    setQrError("");
+    setShowQrScanner(true);
+    // Wait a tick for the reader div to mount.
+    setTimeout(async () => {
+      try {
+        const { Html5Qrcode } = await import("html5-qrcode");
+        const scanner = new Html5Qrcode("qr-reader");
+        qrScannerRef.current = scanner;
+        await scanner.start(
+          { facingMode: "environment" },
+          { fps: 10, qrbox: { width: 250, height: 250 } },
+          (decodedText) => {
+            const slug = extractSlug(decodedText);
+            if (slug) {
+              setEventSlug(slug);
+              stopQrScan();
+              validateEvent(slug);
+            }
+          },
+          () => {
+            /* per-frame decode misses are normal — ignore */
+          }
+        );
+      } catch (err) {
+        console.error("QR scanner failed:", err);
+        setQrError(
+          "Couldn't start the camera. Check the browser permission, or type the event code instead."
+        );
+      }
+    }, 150);
+  };
+
+  useEffect(() => () => stopQrScan(), []);
+
+  // ---- STEP 3: matches ----
+  const fetchMatches = async (slug) => {
+    if (!slug.trim()) return;
+    setLoading(true);
+    setError("");
+    setSearched(true);
+    setSearchedSlug(slug.trim());
+    try {
+      const data = await getMatches(slug.trim());
+      setMatches(data.matches || []);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRefresh = () => {
+    if (eventValid) fetchMatches(eventValid.slug);
+  };
+
+  // ---- auth guard + restore last event ----
   useEffect(() => {
     const t = getToken();
     if (!t) {
@@ -128,8 +256,8 @@ export default function GalleryPage() {
         } catch {
           /* ignore */
         }
-        if (savedSlug && data.user.has_selfie) {
-          fetchMatches(savedSlug);
+        if (savedSlug) {
+          validateEvent(savedSlug, data.user);
         }
         setAuthChecked(true);
       })
@@ -140,45 +268,22 @@ export default function GalleryPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const fetchMatches = async (slug) => {
-    if (!slug.trim()) return;
-    setLoading(true);
-    setError("");
-    setSearched(true);
-    setSearchedSlug(slug.trim());
-    try {
-      const data = await getMatches(slug.trim());
-      setMatches(data.matches || []);
-      try {
-        localStorage.setItem("eventSlug", slug.trim());
-      } catch {
-        /* ignore */
-      }
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleFind = (e) => {
-    e.preventDefault();
-    fetchMatches(eventSlug);
-  };
-
   const handleSelfieUpload = async () => {
     if (!selfieFile) return;
     setUploadingSelfie(true);
     setError("");
     try {
-      // Face AI runs on-device: compute the selfie descriptor in-browser.
-      const { loadFaceModels, getSelfieDescriptor } = await import("../lib/faceai");
+      const { loadFaceModels, getSelfieDescriptor } = await import(
+        "../lib/faceai"
+      );
       setSelfieStatus("Loading face AI…");
       await loadFaceModels();
       setSelfieStatus("Scanning your selfie…");
       const descriptor = await getSelfieDescriptor(selfieFile);
       if (!descriptor) {
-        throw new Error("No face detected in that selfie. Try a clearer, front-facing photo.");
+        throw new Error(
+          "No face detected in that selfie. Try a clearer, front-facing photo."
+        );
       }
       setSelfieStatus("Finding your photos…");
       const data = await uploadSelfie(selfieFile, descriptor);
@@ -192,7 +297,7 @@ export default function GalleryPage() {
       } catch {
         /* ignore */
       }
-      if (eventSlug.trim()) await fetchMatches(eventSlug.trim());
+      if (eventValid) await fetchMatches(eventValid.slug);
       setShowRetake(false);
       setSelfieFile(null);
     } catch (err) {
@@ -243,6 +348,9 @@ export default function GalleryPage() {
     );
   }
 
+  const resultsCurrent =
+    searched && searchedSlug && eventValid && eventValid.slug === searchedSlug;
+
   return (
     <>
       <Head>
@@ -263,176 +371,202 @@ export default function GalleryPage() {
             </div>
           )}
 
-          {/* ---- STEP 1: event code ---- */}
+          {/* ---- STEP 1: find the event ---- */}
           <div className="mt-6 rounded-2xl bg-white/5 p-6 ring-1 ring-white/10">
             <h2 className="font-semibold">
               <span className="mr-2 inline-flex h-6 w-6 items-center justify-center rounded-lg bg-gradient-to-br from-violet-500 to-fuchsia-500 text-xs font-bold">
                 1
               </span>
-              Enter the event code
+              Find your event
             </h2>
-            <form onSubmit={handleFind} className="mt-3 flex gap-2">
+            <form onSubmit={handleFindEvent} className="mt-3 flex gap-2">
               <input
                 value={eventSlug}
-                onChange={(e) => setEventSlug(e.target.value)}
+                onChange={(e) => {
+                  setEventSlug(e.target.value);
+                  setEventValid(null);
+                  setEventError("");
+                }}
                 placeholder="e.g. ananyas-wedding"
                 className="min-w-0 flex-1 rounded-xl border border-white/10 bg-zinc-900 px-4 py-2.5 text-sm outline-none transition focus:border-fuchsia-500"
               />
               <button
-                type="submit"
-                disabled={loading || !eventSlug.trim()}
-                className="rounded-xl bg-gradient-to-r from-violet-500 to-fuchsia-500 px-5 py-2.5 text-sm font-semibold transition hover:opacity-90 disabled:opacity-50"
+                type="button"
+                onClick={startQrScan}
+                className="shrink-0 rounded-xl bg-white/10 px-4 py-2.5 text-sm font-semibold text-zinc-200 transition hover:bg-white/20"
+                title="Scan the event QR code"
               >
-                {loading ? "Searching…" : "Find my photos"}
+                📷 Scan QR
+              </button>
+              <button
+                type="submit"
+                disabled={validatingEvent || !eventSlug.trim()}
+                className="shrink-0 rounded-xl bg-gradient-to-r from-violet-500 to-fuchsia-500 px-5 py-2.5 text-sm font-semibold transition hover:opacity-90 disabled:opacity-50"
+              >
+                {validatingEvent ? "Checking…" : "Find event"}
               </button>
             </form>
-            <button
-              onClick={() => fetchMatches(eventSlug)}
-              disabled={loading || !eventSlug.trim()}
-              className="mt-2 text-xs text-zinc-500 underline hover:text-zinc-300 disabled:opacity-50"
-            >
-              ⟳ Refresh results
-            </button>
+            {eventError && (
+              <p className="mt-2 text-sm text-red-300">{eventError}</p>
+            )}
+            {eventValid && (
+              <div className="mt-3 flex items-center justify-between gap-3 rounded-xl bg-emerald-500/10 px-4 py-2.5 ring-1 ring-emerald-500/20">
+                <p className="text-sm text-emerald-300">
+                  ✅ <span className="font-semibold">{eventValid.name}</span>
+                  <span className="text-emerald-400/70">
+                    {" "}
+                    · {eventValid.photo_count} photos
+                  </span>
+                </p>
+                <button
+                  onClick={handleRefresh}
+                  disabled={loading}
+                  className="shrink-0 text-xs text-zinc-400 underline hover:text-zinc-200 disabled:opacity-50"
+                >
+                  ⟳ Refresh results
+                </button>
+              </div>
+            )}
           </div>
 
-          {/* ---- STEP 2: selfie check-in ---- */}
-          {user && user.has_selfie && !showRetake ? (
-            <div className="mt-4 flex items-center gap-4 rounded-2xl bg-emerald-500/10 p-4 ring-1 ring-emerald-500/20">
-              {user.selfie_url && (
-                <img
-                  src={resolveUrl(user.selfie_url)}
-                  alt="Your Face ID"
-                  className="h-14 w-14 rounded-full object-cover ring-2 ring-emerald-500/40"
-                />
-              )}
-              <div className="flex-1">
-                <p className="text-sm font-semibold text-emerald-300">
-                  ✅ Face ID verified
-                </p>
-                <p className="text-xs text-zinc-400">
-                  Your face is registered — AI matching is active for every
-                  event you join. Not finding yourself? Try a clearer selfie.
-                </p>
+          {/* ---- STEP 2: selfie check-in (only after the event is found) ---- */}
+          {eventValid &&
+            (user && user.has_selfie && !showRetake ? (
+              <div className="mt-4 flex items-center gap-4 rounded-2xl bg-emerald-500/10 p-4 ring-1 ring-emerald-500/20">
+                {user.selfie_url && (
+                  <img
+                    src={resolveUrl(user.selfie_url)}
+                    alt="Your Face ID"
+                    className="h-14 w-14 rounded-full object-cover ring-2 ring-emerald-500/40"
+                  />
+                )}
+                <div className="flex-1">
+                  <p className="text-sm font-semibold text-emerald-300">
+                    ✅ Face ID verified
+                  </p>
+                  <p className="text-xs text-zinc-400">
+                    Your face is registered — AI matching is active for every
+                    event you join. Not finding yourself? Try a clearer selfie.
+                  </p>
+                </div>
+                <button
+                  onClick={() => setShowRetake(true)}
+                  className="shrink-0 rounded-xl bg-white/10 px-4 py-2 text-xs font-medium text-zinc-200 hover:bg-white/15"
+                >
+                  Retake
+                </button>
               </div>
-              <button
-                onClick={() => setShowRetake(true)}
-                className="shrink-0 rounded-xl bg-white/10 px-4 py-2 text-xs font-medium text-zinc-200 hover:bg-white/15"
-              >
-                Retake
-              </button>
-            </div>
-          ) : (
-            user && (!user.has_selfie || showRetake) && (
+            ) : (
+              user &&
+              (!user.has_selfie || showRetake) && (
+                <div className="mt-4 rounded-2xl bg-white/5 p-6 ring-1 ring-white/10">
+                  <h2 className="font-semibold">
+                    <span className="mr-2 inline-flex h-6 w-6 items-center justify-center rounded-lg bg-gradient-to-br from-violet-500 to-fuchsia-500 text-xs font-bold">
+                      2
+                    </span>
+                    Check in with a selfie 🤳
+                  </h2>
+                  <p className="mt-1 text-sm text-zinc-400">
+                    Upload one clear, front-facing selfie. Our AI uses it as
+                    your Face ID to find your photos.
+                  </p>
+                  <div className="mt-4 flex flex-wrap items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={openCamera}
+                      className="rounded-xl bg-gradient-to-r from-violet-500 to-fuchsia-500 px-5 py-2 text-sm font-semibold text-white transition hover:opacity-90"
+                    >
+                      📸 Take selfie
+                    </button>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) =>
+                        setSelfieFile(e.target.files?.[0] || null)
+                      }
+                      className="text-sm text-zinc-400 file:mr-3 file:rounded-xl file:border-0 file:bg-white/10 file:px-4 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-white/20"
+                    />
+                    <button
+                      onClick={handleSelfieUpload}
+                      disabled={!selfieFile || uploadingSelfie}
+                      className="rounded-xl bg-gradient-to-r from-violet-500 to-fuchsia-500 px-5 py-2 text-sm font-semibold transition hover:opacity-90 disabled:opacity-50"
+                    >
+                      {uploadingSelfie
+                        ? selfieStatus || "Scanning face…"
+                        : "Upload selfie"}
+                    </button>
+                  </div>
+                  {showRetake && (
+                    <button
+                      onClick={() => {
+                        setShowRetake(false);
+                        setSelfieFile(null);
+                      }}
+                      className="mt-3 text-xs text-zinc-500 underline hover:text-zinc-300"
+                    >
+                      Cancel retake
+                    </button>
+                  )}
+                </div>
+              )
+            ))}
+
+          {/* ---- STEP 3: matches (only after event + selfie) ---- */}
+          {eventValid && user?.has_selfie && (
             <div className="mt-4 rounded-2xl bg-white/5 p-6 ring-1 ring-white/10">
               <h2 className="font-semibold">
                 <span className="mr-2 inline-flex h-6 w-6 items-center justify-center rounded-lg bg-gradient-to-br from-violet-500 to-fuchsia-500 text-xs font-bold">
-                  2
+                  3
                 </span>
-                Check in with a selfie 🤳
-              </h2>
-              <p className="mt-1 text-sm text-zinc-400">
-                Upload one clear, front-facing selfie. Our AI uses it as your
-                Face ID to find your photos.
-              </p>
-              <div className="mt-4 flex flex-wrap items-center gap-3">
-                <button
-                  type="button"
-                  onClick={openCamera}
-                  className="rounded-xl bg-gradient-to-r from-violet-500 to-fuchsia-500 px-5 py-2 text-sm font-semibold text-white transition hover:opacity-90"
-                >
-                  📸 Take selfie
-                </button>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => setSelfieFile(e.target.files?.[0] || null)}
-                  className="text-sm text-zinc-400 file:mr-3 file:rounded-xl file:border-0 file:bg-white/10 file:px-4 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-white/20"
-                />
-                <button
-                  onClick={handleSelfieUpload}
-                  disabled={!selfieFile || uploadingSelfie}
-                  className="rounded-xl bg-gradient-to-r from-violet-500 to-fuchsia-500 px-5 py-2 text-sm font-semibold transition hover:opacity-90 disabled:opacity-50"
-                >
-                  {uploadingSelfie ? (selfieStatus || "Scanning face…") : "Upload selfie"}
-                </button>
-              </div>
-              {showRetake && (
-                <button
-                  onClick={() => {
-                    setShowRetake(false);
-                    setSelfieFile(null);
-                  }}
-                  className="mt-3 text-xs text-zinc-500 underline hover:text-zinc-300"
-                >
-                  Cancel retake
-                </button>
-              )}
-            </div>
-            )
-          )}
-
-          {/* ---- STEP 3: matches ---- */}
-          <div className="mt-4 rounded-2xl bg-white/5 p-6 ring-1 ring-white/10">
-            <h2 className="font-semibold">
-              <span className="mr-2 inline-flex h-6 w-6 items-center justify-center rounded-lg bg-gradient-to-br from-violet-500 to-fuchsia-500 text-xs font-bold">
-                3
-              </span>
-              Your matched photos
-              {searched &&
-                searchedSlug &&
-                eventSlug.trim() === searchedSlug &&
-                matches.length > 0 && (
+                Your matched photos
+                {resultsCurrent && matches.length > 0 && (
                   <span className="ml-2 text-sm font-normal text-zinc-500">
                     {matches.length} found
                   </span>
                 )}
-            </h2>
+              </h2>
 
-            {loading ? (
-              <p className="py-10 text-center text-sm text-zinc-500">
-                Scanning photos for your face… 🧠
-              </p>
-            ) : !searched ? (
-              <p className="py-10 text-center text-sm text-zinc-500">
-                Enter an event code above to start searching. 🔍
-              </p>
-            ) : !searchedSlug || eventSlug.trim() !== searchedSlug ? (
-              <p className="py-10 text-center text-sm text-zinc-500">
-                Event code changed — press <span className="font-semibold text-zinc-300">Find my photos</span> to search again. 🔍
-              </p>
-            ) : matches.length === 0 ? (
-              <div className="py-10 text-center">
-                <div className="text-4xl">🕵️</div>
-                <p className="mt-3 text-sm text-zinc-400">
-                  No matches yet — try a clearer, front-facing selfie, or check
-                  that the event code is right.
+              {loading ? (
+                <p className="py-10 text-center text-sm text-zinc-500">
+                  Scanning photos for your face… 🧠
                 </p>
-              </div>
-            ) : (
-              <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-                {matches.map((m) => (
-                  <button
-                    key={m.id}
-                    onClick={() => setLightboxPhoto(m)}
-                    className="group relative overflow-hidden rounded-xl text-left ring-1 ring-white/10 transition hover:ring-fuchsia-500/50"
-                  >
-                    <img
-                      src={resolveUrl(m.url)}
-                      alt={m.filename}
-                      className="aspect-square w-full object-cover"
-                      loading="lazy"
-                    />
-                    <span className="absolute left-2 top-2 rounded-full bg-emerald-500/90 px-2 py-0.5 text-xs font-semibold text-white">
-                      {Math.round(m.score ?? 0)}% match
-                    </span>
-                    <span className="absolute inset-x-0 bottom-0 bg-black/60 px-2 py-1 text-[11px] text-zinc-300 opacity-0 transition group-hover:opacity-100">
-                      Click to view ⤢
-                    </span>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
+              ) : !resultsCurrent ? (
+                <p className="py-10 text-center text-sm text-zinc-500">
+                  Searching your photos… 🔍
+                </p>
+              ) : matches.length === 0 ? (
+                <div className="py-10 text-center">
+                  <div className="text-4xl">🕵️</div>
+                  <p className="mt-3 text-sm text-zinc-400">
+                    No matches yet — try a clearer, front-facing selfie.
+                  </p>
+                </div>
+              ) : (
+                <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+                  {matches.map((m) => (
+                    <button
+                      key={m.id}
+                      onClick={() => setLightboxPhoto(m)}
+                      className="group relative overflow-hidden rounded-xl text-left ring-1 ring-white/10 transition hover:ring-fuchsia-500/50"
+                    >
+                      <img
+                        src={resolveUrl(m.url)}
+                        alt={m.filename}
+                        className="aspect-square w-full object-cover"
+                        loading="lazy"
+                      />
+                      <span className="absolute left-2 top-2 rounded-full bg-emerald-500/90 px-2 py-0.5 text-xs font-semibold text-white">
+                        {Math.round(m.score ?? 0)}% match
+                      </span>
+                      <span className="absolute inset-x-0 bottom-0 bg-black/60 px-2 py-1 text-[11px] text-zinc-300 opacity-0 transition group-hover:opacity-100">
+                        Click to view ⤢
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </main>
 
         <Lightbox
@@ -483,6 +617,40 @@ export default function GalleryPage() {
                   </div>
                 </>
               )}
+            </div>
+          </div>
+        )}
+
+        {/* ---- QR scanner ---- */}
+        {showQrScanner && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
+            <div className="w-full max-w-md overflow-hidden rounded-2xl bg-zinc-900 ring-1 ring-white/10">
+              <div className="flex items-center justify-between px-4 py-3">
+                <h3 className="font-semibold text-white">Scan event QR</h3>
+                <button
+                  onClick={stopQrScan}
+                  className="rounded-lg bg-white/10 px-3 py-1 text-sm text-zinc-300 hover:bg-white/20"
+                >
+                  ✕ Close
+                </button>
+              </div>
+              <div className="px-4 pb-5">
+                {qrError ? (
+                  <p className="rounded-xl bg-red-500/10 px-4 py-3 text-sm text-red-300 ring-1 ring-red-500/30">
+                    {qrError}
+                  </p>
+                ) : (
+                  <>
+                    <div
+                      id="qr-reader"
+                      className="overflow-hidden rounded-xl"
+                    />
+                    <p className="mt-3 text-center text-xs text-zinc-500">
+                      Point your camera at the event QR code
+                    </p>
+                  </>
+                )}
+              </div>
             </div>
           </div>
         )}
