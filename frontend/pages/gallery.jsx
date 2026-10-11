@@ -118,7 +118,7 @@ export default function GalleryPage() {
 
   // ---- STEP 1: verify the event exists before anything else ----
   const validateEvent = async (slug, afterUser) => {
-    const s = (slug || "").trim();
+    const s = (slug || "").trim().toLowerCase();
     if (!s) return;
     setValidatingEvent(true);
     setEventError("");

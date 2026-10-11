@@ -173,7 +173,7 @@ def health():
 
 @app.get("/api/events/<slug>")
 def public_event(slug):
-    event = Event.query.filter_by(slug=slug).first()
+    event = Event.query.filter_by(slug=slug.strip().lower()).first()
     if not event:
         return jsonify({"error": "Event not found"}), 404
     return jsonify({"event": {
@@ -454,7 +454,7 @@ def upload_selfie():
 @login_required
 def guest_matches():
     user = request.current_user
-    slug = (request.args.get("event") or "").strip()
+    slug = (request.args.get("event") or "").strip().lower()
     if not slug:
         return jsonify({"error": "Pass ?event=<event-slug>."}), 400
     event = Event.query.filter_by(slug=slug).first()
