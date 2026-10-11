@@ -20,7 +20,10 @@ def _get_deepface():
     global _DeepFace, _DeepFace_error
     if _DeepFace is None and _DeepFace_error is None:
         try:
-            from deepface import DeepFace
+            try:
+                from deepface import DeepFace  # deepface < 0.0.93 (class API)
+            except ImportError:
+                import deepface.DeepFace as DeepFace  # deepface >= 0.0.93 (module functions)
             _DeepFace = DeepFace
         except Exception as exc:  # deepface not installed (yet)
             _DeepFace_error = exc
