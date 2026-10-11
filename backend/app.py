@@ -143,7 +143,7 @@ def make_slug(name: str) -> str:
 
 def build_qr_code(event: Event) -> None:
     """Generate the shareable QR code PNG for an event (saved locally)."""
-    join_url = f"{app.config['FRONTEND_URL']}/join/{event.slug}"
+    join_url = f"{_frontend_base()}/join?event={event.slug}"
     img = qrcode.make(join_url, box_size=10, border=2)
     img.save(os.path.join(app.config["QRCODE_FOLDER"], f"{event.slug}.png"))
 
