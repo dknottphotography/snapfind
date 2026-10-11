@@ -166,12 +166,6 @@ export default function Home() {
               >
                 Find my photos →
               </Link>
-              <Link
-                href="/login"
-                className="btn-ghost rounded-2xl px-8 py-4 text-base font-semibold"
-              >
-                Photographer login
-              </Link>
             </div>
           </motion.div>
 
