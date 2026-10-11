@@ -181,10 +181,12 @@ export function compressImage(file, maxDim = 1280, quality = 0.82) {
  * Upload photos one at a time with live progress.
  * onProgress({ done, total, fileName, loaded, fileTotal }) is called
  * repeatedly: byte-level progress within each file, plus file counts.
+ * `descriptors` (optional): array aligned with files; descriptors[i] is the
+ *   list of 128-dim face vectors computed in-browser for files[i].
  * Resolves with { photos: [...all uploaded], photo_count }.
  * Sequential (not parallel) to stay gentle on the backend's memory.
  */
-export function uploadEventPhotosProgress(eventId, files, onProgress) {
+export function uploadEventPhotosProgress(eventId, files, onProgress, descriptors) {
   const list = [...files];
   const allPhotos = [];
   let photoCount = 0;
@@ -207,6 +209,10 @@ export function uploadEventPhotosProgress(eventId, files, onProgress) {
       const file = list[idx];
       const fd = new FormData();
       fd.append("files", file);
+      // Client-computed face descriptors (face-api.js), aligned per file.
+      if (descriptors && descriptors[idx]) {
+        fd.append("descriptors", JSON.stringify([descriptors[idx]]));
+      }
       const xhr = new XMLHttpRequest();
       xhr.open("POST", `${API_URL}/api/admin/events/${eventId}/photos`);
       const token = getToken();
@@ -246,9 +252,12 @@ export function uploadEventPhotosProgress(eventId, files, onProgress) {
 
 // ---------- guest ----------
 
-export function uploadSelfie(file) {
+export function uploadSelfie(file, descriptor) {
   const fd = new FormData();
   fd.append("selfie", file);
+  if (descriptor) {
+    fd.append("descriptor", JSON.stringify(descriptor));
+  }
   return api("/api/guest/selfie", { method: "POST", formData: fd });
 }
 

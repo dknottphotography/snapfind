@@ -145,9 +145,26 @@ export default function AdminPage() {
       for (const f of files) {
         compressed.push(await compressImage(f));
       }
+      // Face AI runs on-device: detect faces + compute descriptors per photo.
+      const { loadFaceModels, getFaceDescriptors } = await import("../lib/faceai");
+      await loadFaceModels((msg) =>
+        setUploadProgress({ done: 0, total: compressed.length, fileName: msg, loaded: 0, fileTotal: 1, preparing: true })
+      );
+      const descriptors = [];
+      for (let i = 0; i < compressed.length; i++) {
+        setUploadProgress({
+          done: 0, total: compressed.length,
+          fileName: `Scanning faces… ${i + 1}/${compressed.length}`,
+          loaded: i, fileTotal: compressed.length, preparing: true,
+        });
+        descriptors.push(await getFaceDescriptors(compressed[i]));
+      }
       setUploadProgress({ done: 0, total: compressed.length, fileName: "", loaded: 0, fileTotal: 1 });
-      const data = await uploadEventPhotosProgress(selectedId, compressed, (p) =>
-        setUploadProgress({ ...p })
+      const data = await uploadEventPhotosProgress(
+        selectedId,
+        compressed,
+        (p) => setUploadProgress({ ...p }),
+        descriptors
       );
       setPhotos((prev) => [...(data.photos || []), ...prev]);
       setEvents((prev) =>

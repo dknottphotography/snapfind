@@ -26,9 +26,9 @@ class Config:
     FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:3000").rstrip("/")
     BACKEND_URL = os.environ.get("BACKEND_URL", "").rstrip("/")
 
-    # Cosine DISTANCE threshold for ArcFace matching (lower = stricter).
-    # DeepFace's own default for ArcFace + cosine is 0.68.
-    FACE_MATCH_THRESHOLD = float(os.environ.get("FACE_MATCH_THRESHOLD", "0.60"))
+    # Euclidean DISTANCE threshold for face-api.js descriptors (lower = stricter).
+    # face-api.js convention is ~0.6; 0.5 is a good balance for event photos.
+    FACE_MATCH_THRESHOLD = float(os.environ.get("FACE_MATCH_THRESHOLD", "0.50"))
 
     # Max upload size per request (MB).
     MAX_CONTENT_LENGTH = int(os.environ.get("MAX_UPLOAD_MB", "32")) * 1024 * 1024

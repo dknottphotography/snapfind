@@ -149,7 +149,7 @@ def build_qr_code(event: Event) -> None:
 
 
 def match_distance(user: User, photo: Photo):
-    """Cosine distance between the guest's selfie and the best face in a photo."""
+    """Euclidean distance between the guest's selfie and the best face in a photo."""
     if not user.selfie_embedding:
         return None
     try:
@@ -284,21 +284,31 @@ def upload_event_photos(event_id):
     dest_dir = os.path.join(app.config["UPLOAD_FOLDER"], event.slug)
     os.makedirs(dest_dir, exist_ok=True)
 
+    # Face descriptors are computed in the photographer's browser (face-api.js)
+    # and sent as a JSON array aligned with the files order:
+    # descriptors[i] = list of 128-dim vectors for files[i].
+    try:
+        raw_descriptors = json.loads(request.form.get("descriptors", "[]"))
+    except Exception:
+        raw_descriptors = []
+
     saved = []
-    for f in files:
+    for idx, f in enumerate(files):
         ext = secure_filename(f.filename).rsplit(".", 1)[1].lower()
         filename = f"{uuid.uuid4().hex}.{ext}"
         abs_path = os.path.join(dest_dir, filename)
         f.save(abs_path)
 
-        # Local face AI: RetinaFace detect -> ArcFace embed -> store vectors.
-        embeddings = face_engine.extract_embeddings(abs_path)
+        # Client-computed descriptors (validated server-side).
+        embeddings = face_engine.sanitize_descriptors(
+            raw_descriptors[idx] if idx < len(raw_descriptors) else []
+        )
 
         photo = Photo(
             event_id=event.id,
             filename=filename,
             rel_path=f"uploads/{event.slug}/{filename}",
-            face_embeddings=json.dumps([e.tolist() for e in embeddings]),
+            face_embeddings=json.dumps(embeddings),
             faces_detected=len(embeddings),
         )
         db.session.add(photo)
@@ -355,8 +365,12 @@ def edit_photo_admin(photo_id):
         return jsonify({"error": "No valid image file received (png/jpg/jpeg/webp)."}), 400
     abs_path = os.path.join(app.config["STATIC_DIR"], photo.rel_path)
     f.save(abs_path)  # overwrite in place
-    embeddings = face_engine.extract_embeddings(abs_path)
-    photo.face_embeddings = json.dumps([e.tolist() for e in embeddings])
+    try:
+        raw = json.loads(request.form.get("descriptors", "[]"))
+    except Exception:
+        raw = []
+    embeddings = face_engine.sanitize_descriptors(raw)
+    photo.face_embeddings = json.dumps(embeddings)
     photo.faces_detected = len(embeddings)
     db.session.commit()
     return jsonify({"photo": photo_payload(photo)})
@@ -408,13 +422,21 @@ def upload_selfie():
             pass
 
     f.save(abs_path)
-    embedding = face_engine.extract_selfie_embedding(abs_path)
+
+    # Face descriptor is computed in the guest's browser (face-api.js),
+    # sent as a single 128-dim JSON array in the "descriptor" form field.
+    try:
+        raw = json.loads(request.form.get("descriptor", "null"))
+    except Exception:
+        raw = None
+    cleaned = face_engine.sanitize_descriptors([raw], max_faces=1)
+    embedding = cleaned[0] if cleaned else None
     if embedding is None:
         os.remove(abs_path)
         return jsonify({"error": "No face detected in that selfie. Try a clearer, front-facing photo."}), 422
 
     user.selfie_path = f"selfies/{filename}"
-    user.selfie_embedding = json.dumps(embedding.tolist())
+    user.selfie_embedding = json.dumps(embedding)
     db.session.commit()
     return jsonify({
         "selfie_url": f"{_public_base()}/static/{user.selfie_path}",

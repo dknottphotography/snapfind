@@ -26,6 +26,7 @@ export default function GalleryPage() {
 
   const [selfieFile, setSelfieFile] = useState(null);
   const [uploadingSelfie, setUploadingSelfie] = useState(false);
+  const [selfieStatus, setSelfieStatus] = useState("");
   const [showRetake, setShowRetake] = useState(false);
 
   const [lightboxPhoto, setLightboxPhoto] = useState(null);
@@ -97,7 +98,17 @@ export default function GalleryPage() {
     setUploadingSelfie(true);
     setError("");
     try {
-      const data = await uploadSelfie(selfieFile);
+      // Face AI runs on-device: compute the selfie descriptor in-browser.
+      const { loadFaceModels, getSelfieDescriptor } = await import("../lib/faceai");
+      setSelfieStatus("Loading face AI…");
+      await loadFaceModels();
+      setSelfieStatus("Scanning your selfie…");
+      const descriptor = await getSelfieDescriptor(selfieFile);
+      if (!descriptor) {
+        throw new Error("No face detected in that selfie. Try a clearer, front-facing photo.");
+      }
+      setSelfieStatus("Finding your photos…");
+      const data = await uploadSelfie(selfieFile, descriptor);
       const updated = data.user || user;
       setUser({ ...user, ...updated, has_selfie: true });
       try {
@@ -115,6 +126,7 @@ export default function GalleryPage() {
       setError(err.message);
     } finally {
       setUploadingSelfie(false);
+      setSelfieStatus("");
     }
   };
 
@@ -261,7 +273,7 @@ export default function GalleryPage() {
                   disabled={!selfieFile || uploadingSelfie}
                   className="rounded-xl bg-gradient-to-r from-violet-500 to-fuchsia-500 px-5 py-2 text-sm font-semibold transition hover:opacity-90 disabled:opacity-50"
                 >
-                  {uploadingSelfie ? "Scanning face…" : "Upload selfie"}
+                  {uploadingSelfie ? (selfieStatus || "Scanning face…") : "Upload selfie"}
                 </button>
               </div>
               {showRetake && (

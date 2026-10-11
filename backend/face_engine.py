@@ -1,99 +1,59 @@
-"""Face AI engine — 100% free & open-source, runs locally on CPU.
+"""Face matching engine — lightweight, no ML models on the server.
 
-Pipeline (exactly as specified):
-    * Face detection : RetinaFace   (detector_backend="retinaface")
-    * Embeddings     : ArcFace      (model_name="ArcFace")
-    * Similarity     : cosine distance (lower = more similar)
+Face detection + descriptor extraction happen in the browser (face-api.js).
+The server only stores descriptors and compares them with numpy:
+pure math, no TensorFlow, fits comfortably in 512MB RAM.
 
-DeepFace is imported lazily so the Flask app boots even before the
-models are downloaded or deepface is installed. The very first embedding
-call downloads the ArcFace + RetinaFace weights (~a few hundred MB) into
-~/.deepface — a one-time, free download. No API keys, no cloud.
+Descriptor format: 128-dim float vectors (face-api.js faceRecognitionNet).
+Distance metric: Euclidean distance (face-api.js standard). Lower = more similar.
+Typical match threshold: 0.45 - 0.60.
 """
+
 import numpy as np
 
-_DeepFace = None
-_DeepFace_error = None
-
-
-def _get_deepface():
-    global _DeepFace, _DeepFace_error
-    if _DeepFace is None and _DeepFace_error is None:
-        try:
-            try:
-                from deepface import DeepFace  # deepface < 0.0.93 (class API)
-            except ImportError:
-                import deepface.DeepFace as DeepFace  # deepface >= 0.0.93 (module functions)
-            _DeepFace = DeepFace
-        except Exception as exc:  # deepface not installed (yet)
-            _DeepFace_error = exc
-    return _DeepFace
-
-
-def ai_available() -> bool:
-    return _get_deepface() is not None
+DESCRIPTOR_DIM = 128
 
 
 def ai_status() -> dict:
-    ok = ai_available()
-    return {"available": ok, "error": None if ok else str(_DeepFace_error)}
+    return {"available": True, "error": None, "mode": "browser-descriptors"}
 
 
-def _represent(image_path):
-    """Detect faces and embed them.
-
-    Returns a list of {"embedding": np.ndarray, "area": float}.
-    """
-    DeepFace = _get_deepface()
-    if DeepFace is None:
-        return []
-    try:
-        results = DeepFace.represent(
-            img_path=image_path,
-            model_name="ArcFace",
-            detector_backend="retinaface",
-            enforce_detection=False,  # fall back to whole image if no face found
-            align=True,
-        )
-    except Exception:
-        return []
-    out = []
-    for r in results or []:
-        emb = r.get("embedding")
-        if not emb:
-            continue
-        fa = r.get("facial_area") or {}
-        try:
-            area = float(fa.get("w", 0)) * float(fa.get("h", 0))
-        except Exception:
-            area = 0.0
-        out.append({"embedding": np.asarray(emb, dtype=np.float32), "area": area})
-    return out
+def ai_available() -> bool:
+    return True
 
 
-def extract_embeddings(image_path):
-    """All face embeddings found in an event photo (for indexing)."""
-    return [r["embedding"] for r in _represent(image_path)]
-
-
-def extract_selfie_embedding(image_path):
-    """Single embedding for a guest selfie — picks the largest detected face."""
-    faces = _represent(image_path)
-    if not faces:
-        return None
-    faces.sort(key=lambda f: f["area"], reverse=True)
-    return faces[0]["embedding"]
-
-
-def cosine_distance(a, b) -> float:
-    a = np.asarray(a, dtype=np.float32)
-    b = np.asarray(b, dtype=np.float32)
-    denom = (np.linalg.norm(a) * np.linalg.norm(b)) + 1e-10
-    return float(1.0 - np.dot(a, b) / denom)
+def euclidean_distance(a, b) -> float:
+    a = np.asarray(a, dtype=np.float32).ravel()
+    b = np.asarray(b, dtype=np.float32).ravel()
+    if a.shape != b.shape:
+        raise ValueError(f"descriptor dim mismatch: {a.shape} vs {b.shape}")
+    return float(np.linalg.norm(a - b))
 
 
 def best_distance(query_emb, candidate_embs):
-    """Smallest cosine distance between the selfie and any face in a photo."""
+    """Smallest Euclidean distance between the selfie and any face in a photo."""
     if query_emb is None or not candidate_embs:
         return None
-    return min(cosine_distance(query_emb, c) for c in candidate_embs)
+    try:
+        return min(euclidean_distance(query_emb, c) for c in candidate_embs)
+    except Exception:
+        return None
+
+
+def sanitize_descriptors(raw, max_faces=20):
+    """Validate client-supplied descriptors: list of 128-dim float lists."""
+    if not isinstance(raw, list):
+        return []
+    out = []
+    for d in raw[:max_faces]:
+        try:
+            arr = np.asarray(d, dtype=np.float32).ravel()
+            if arr.shape == (DESCRIPTOR_DIM,) and np.all(np.isfinite(arr)):
+                out.append(arr.tolist())
+        except Exception:
+            continue
+    return out
+
+
+# Backwards-compat alias (old ArcFace/cosine API).
+cosine_distance = euclidean_distance
