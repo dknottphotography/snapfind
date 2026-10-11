@@ -85,14 +85,8 @@ export default function Home() {
             </p>
             <div className="mt-8 flex flex-wrap gap-4">
               <Link
-                href="/admin"
-                className="rounded-2xl bg-gradient-to-r from-violet-500 to-fuchsia-500 px-7 py-3 font-semibold text-white shadow-lg shadow-fuchsia-500/20 transition hover:opacity-90"
-              >
-                I&apos;m a Photographer
-              </Link>
-              <Link
                 href="/gallery"
-                className="rounded-2xl border border-white/20 px-7 py-3 font-semibold text-zinc-200 transition hover:border-white/40 hover:text-white"
+                className="rounded-2xl bg-gradient-to-r from-violet-500 to-fuchsia-500 px-7 py-3 font-semibold text-white shadow-lg shadow-fuchsia-500/20 transition hover:opacity-90"
               >
                 Find My Photos
               </Link>

@@ -33,9 +33,6 @@ export default function Navbar() {
           <Link href="/" className="transition hover:text-white">
             Home
           </Link>
-          <Link href="/admin" className="transition hover:text-white">
-            Photographer
-          </Link>
           <Link href="/gallery" className="transition hover:text-white">
             My Gallery
           </Link>
