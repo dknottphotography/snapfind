@@ -61,7 +61,7 @@ export default function Lightbox({
         )}
         <button
           onClick={() => onDownload(photo)}
-          className="rounded-xl bg-gradient-to-r from-violet-500 to-fuchsia-500 px-5 py-2 text-sm font-semibold text-white transition hover:opacity-90"
+          className="btn-bio rounded-xl px-5 py-2 text-sm"
         >
           ⬇ Download
         </button>

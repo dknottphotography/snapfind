@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { IconUpload } from "./icons";
 
 export default function UploadDropzone({
   onFiles,
@@ -38,13 +39,15 @@ export default function UploadDropzone({
         }}
         className={`flex cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed px-6 py-10 text-center transition ${
           dragOver
-            ? "border-fuchsia-400 bg-fuchsia-500/10"
-            : "border-white/15 bg-white/5 hover:border-white/30"
+            ? "border-bio-cyan bg-bio-teal/10"
+            : "border-white/15 bg-white/[0.03] hover:border-bio-cyan/40"
         }`}
       >
-        <span className="text-3xl">📸</span>
-        <p className="text-sm font-medium text-zinc-200">{label}</p>
-        <p className="text-xs text-zinc-500">PNG, JPG, JPEG, WEBP</p>
+        <span className="text-bio-cyan">
+          <IconUpload size={34} />
+        </span>
+        <p className="text-sm font-medium text-ink">{label}</p>
+        <p className="text-xs text-inkdim">PNG, JPG, JPEG, WEBP</p>
       </div>
 
       <input
@@ -57,19 +60,19 @@ export default function UploadDropzone({
       />
 
       {files.length > 0 && (
-        <div className="mt-3 rounded-2xl bg-white/5 p-3 ring-1 ring-white/10">
+        <div className="glass mt-3 rounded-2xl p-3">
           <div className="mb-2 flex items-center justify-between">
-            <p className="text-sm font-medium text-zinc-300">
+            <p className="text-sm font-medium text-inkdim">
               {files.length} file{files.length > 1 ? "s" : ""} selected
             </p>
             <button
               onClick={clear}
-              className="text-xs text-zinc-400 underline hover:text-white"
+              className="text-xs text-inkdim underline hover:text-bio-cyan"
             >
               Clear
             </button>
           </div>
-          <ul className="max-h-32 space-y-1 overflow-y-auto text-xs text-zinc-400">
+          <ul className="max-h-32 space-y-1 overflow-y-auto text-xs text-inkdim">
             {files.map((f, i) => (
               <li key={i} className="truncate">
                 {f.name} — {(f.size / 1024 / 1024).toFixed(2)} MB

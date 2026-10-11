@@ -4,6 +4,7 @@ import { useRouter } from "next/router";
 import Navbar from "../components/Navbar";
 import Lightbox from "../components/Lightbox";
 import AmbientAbyss from "../components/AmbientAbyss";
+import { IconCamera, IconQr, IconCheck, IconSearch, IconRefresh, IconFace, IconX } from "../components/icons";
 import {
   getToken,
   clearAuth,
@@ -78,7 +79,7 @@ export default function GalleryPage() {
         await videoRef.current.play().catch(() => {});
       }
     } catch (err) {
-      console.error("Camera failed:", err);
+      /* camera unavailable — UI shows the fallback */
       setCameraError(
         "Couldn't access your camera. Check the browser permission, or upload a photo from your gallery instead."
       );
@@ -205,7 +206,7 @@ export default function GalleryPage() {
           }
         );
       } catch (err) {
-        console.error("QR scanner failed:", err);
+        /* scanner failed — UI shows the fallback */
         setQrError(
           "Couldn't start the camera. Check the browser permission, or type the event code instead."
         );
@@ -343,7 +344,7 @@ export default function GalleryPage() {
 
   if (!authChecked) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-zinc-950 text-inkdim">
+      <div className="flex min-h-screen items-center justify-center bg-abyss text-inkdim">
         Loading…
       </div>
     );
@@ -398,7 +399,7 @@ export default function GalleryPage() {
                 className="shrink-0 rounded-xl bg-white/10 px-4 py-2.5 text-sm font-semibold text-ink transition hover:bg-white/20"
                 title="Scan the event QR code"
               >
-                📷 Scan QR
+                <span className="inline-flex items-center gap-2"><IconQr size={16} /> Scan QR</span>
               </button>
               <button
                 type="submit"
@@ -413,8 +414,8 @@ export default function GalleryPage() {
             )}
             {eventValid && (
               <div className="mt-3 flex items-center justify-between gap-3 rounded-xl bg-emerald-500/10 px-4 py-2.5 ring-1 ring-emerald-500/20">
-                <p className="text-sm text-emerald-300">
-                  ✅ <span className="font-semibold">{eventValid.name}</span>
+                <p className="flex items-center gap-2 text-sm text-emerald-300">
+                  <IconCheck size={16} /> <span className="font-semibold">{eventValid.name}</span>
                   <span className="text-emerald-400/70">
                     {" "}
                     · {eventValid.photo_count} photos
@@ -425,7 +426,7 @@ export default function GalleryPage() {
                   disabled={loading}
                   className="shrink-0 text-xs text-inkdim underline hover:text-ink disabled:opacity-50"
                 >
-                  ⟳ Refresh results
+                  <span className="inline-flex items-center gap-1.5"><IconRefresh size={13} /> Refresh results</span>
                 </button>
               </div>
             )}
@@ -443,8 +444,8 @@ export default function GalleryPage() {
                   />
                 )}
                 <div className="flex-1">
-                  <p className="text-sm font-semibold text-emerald-300">
-                    ✅ Face ID verified
+                  <p className="flex items-center gap-2 text-sm font-semibold text-emerald-300">
+                    <IconFace size={18} /> Face ID verified
                   </p>
                   <p className="text-xs text-inkdim">
                     Your face is registered — AI matching is active for every
@@ -466,7 +467,7 @@ export default function GalleryPage() {
                     <span className="mr-2 inline-flex h-6 w-6 items-center justify-center rounded-lg bg-gradient-to-br from-bio-teal to-uv-magenta text-xs font-bold">
                       2
                     </span>
-                    Check in with a selfie 🤳
+                    Check in with a selfie
                   </h2>
                   <p className="mt-1 text-sm text-inkdim">
                     Upload one clear, front-facing selfie. Our AI uses it as
@@ -479,7 +480,7 @@ export default function GalleryPage() {
                       disabled={uploadingSelfie}
                       className="rounded-xl btn-bio rounded-xl px-5 py-2 text-sm disabled:opacity-50"
                     >
-                      📸 Take selfie
+                      <span className="inline-flex items-center gap-2"><IconCamera size={16} /> Take selfie</span>
                     </button>
                     <input
                       type="file"
@@ -494,8 +495,8 @@ export default function GalleryPage() {
                     />
                   </div>
                   {uploadingSelfie && (
-                    <p className="mt-3 text-sm font-medium text-fuchsia-300">
-                      {selfieStatus || "Scanning face…"} 🧠
+                    <p className="mt-3 text-sm font-medium text-bio-cyan">
+                      {selfieStatus || "Scanning face…"}
                     </p>
                   )}
                   {showRetake && (
@@ -529,15 +530,15 @@ export default function GalleryPage() {
 
               {loading ? (
                 <p className="py-10 text-center text-sm text-inkdim">
-                  Scanning photos for your face… 🧠
+                  Scanning photos for your face…
                 </p>
               ) : !resultsCurrent ? (
                 <p className="py-10 text-center text-sm text-inkdim">
-                  Searching your photos… 🔍
+                  Searching your photos…
                 </p>
               ) : matches.length === 0 ? (
                 <div className="py-10 text-center">
-                  <div className="text-4xl">🕵️</div>
+                  <div className="text-inkdim"><IconSearch size={40} /></div>
                   <p className="mt-3 text-sm text-inkdim">
                     No matches yet — try a clearer, front-facing selfie.
                   </p>
@@ -548,7 +549,7 @@ export default function GalleryPage() {
                     <button
                       key={m.id}
                       onClick={() => setLightboxPhoto(m)}
-                      className="group relative overflow-hidden rounded-xl text-left ring-1 ring-white/10 transition hover:ring-fuchsia-500/50"
+                      className="group relative overflow-hidden rounded-xl text-left ring-1 ring-white/10 transition hover:ring-bio-cyan/50"
                     >
                       <img
                         src={resolveUrl(m.url)}
@@ -583,12 +584,12 @@ export default function GalleryPage() {
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
             <div className="glass-deep w-full max-w-md overflow-hidden rounded-2xl">
               <div className="flex items-center justify-between px-4 py-3">
-                <h3 className="font-semibold text-white">Take your selfie</h3>
+                <h3 className="font-display font-semibold text-ink">Take your selfie</h3>
                 <button
                   onClick={closeCamera}
                   className="rounded-lg bg-white/10 px-3 py-1 text-sm text-inkdim hover:bg-white/20"
                 >
-                  ✕ Close
+                  <span className="inline-flex items-center gap-1.5"><IconX size={14} /> Close</span>
                 </button>
               </div>
               {cameraError ? (
@@ -613,7 +614,7 @@ export default function GalleryPage() {
                       onClick={capturePhoto}
                       className="rounded-full btn-bio rounded-full px-8 py-3 font-semibold"
                     >
-                      📷 Capture
+                      <span className="inline-flex items-center gap-2"><IconCamera size={18} /> Capture</span>
                     </button>
                   </div>
                 </>
@@ -627,12 +628,12 @@ export default function GalleryPage() {
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
             <div className="glass-deep w-full max-w-md overflow-hidden rounded-2xl">
               <div className="flex items-center justify-between px-4 py-3">
-                <h3 className="font-semibold text-white">Scan event QR</h3>
+                <h3 className="font-display font-semibold text-ink">Scan event QR</h3>
                 <button
                   onClick={stopQrScan}
                   className="rounded-lg bg-white/10 px-3 py-1 text-sm text-inkdim hover:bg-white/20"
                 >
-                  ✕ Close
+                  <span className="inline-flex items-center gap-1.5"><IconX size={14} /> Close</span>
                 </button>
               </div>
               <div className="px-4 pb-5">

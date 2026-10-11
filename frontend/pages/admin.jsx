@@ -5,6 +5,7 @@ import Navbar from "../components/Navbar";
 import UploadDropzone from "../components/UploadDropzone";
 import PhotoEditor from "../components/PhotoEditor";
 import AmbientAbyss from "../components/AmbientAbyss";
+import { IconCamera, IconImage, IconUsers, IconCheck, IconCopy, IconUpload, IconX, IconTrash, IconDownload, IconRefresh } from "../components/icons";
 import {
   getToken,
   clearAuth,
@@ -336,7 +337,7 @@ export default function AdminPage() {
         <main className="relative z-10 mx-auto max-w-7xl px-4 py-8 sm:px-6">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="font-display text-3xl font-bold">Photographer Studio 📷</h1>
+              <h1 className="font-display text-3xl font-bold">Photographer Studio</h1>
               <p className="mt-1 text-sm text-inkdim">
                 Signed in as {me?.name} — create events, upload photos, share QR codes.
               </p>
@@ -345,18 +346,19 @@ export default function AdminPage() {
 
           <div className="mt-6 flex gap-2">
             {[
-              { id: "photos", label: "📸 Photos & Events" },
-              { id: "users", label: "👥 Users" },
+              { id: "photos", label: "Photos & Events", icon: <IconImage size={15} /> },
+              { id: "users", label: "Users", icon: <IconUsers size={15} /> },
             ].map((t) => (
               <button
                 key={t.id}
                 onClick={() => setTab(t.id)}
-                className={`rounded-xl px-4 py-2 text-sm font-medium transition ${
+                className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium transition ${
                   tab === t.id
                     ? "btn-bio"
                     : "glass text-inkdim hover:text-ink"
                 }`}
               >
+                {t.icon}
                 {t.label}
               </button>
             ))}
@@ -380,7 +382,7 @@ export default function AdminPage() {
                     value={newName}
                     onChange={(e) => setNewName(e.target.value)}
                     placeholder="e.g. Ananya's Wedding"
-                    className="min-w-0 flex-1 rounded-xl border border-white/10 bg-zinc-900 px-4 py-2.5 text-sm outline-none transition focus:border-fuchsia-500"
+                    className="min-w-0 flex-1 rounded-xl border border-white/10 bg-abyss/60 px-4 py-2.5 text-sm text-ink outline-none transition focus:border-bio-cyan"
                   />
                   <button
                     type="submit"
@@ -394,7 +396,7 @@ export default function AdminPage() {
                 {lastCreated && (
                   <div className="mt-4 glass rounded-xl p-4">
                     <p className="text-sm font-semibold text-emerald-300">
-                      ✅ Event created!
+                      <span className="inline-flex items-center gap-2"><IconCheck size={16} /> Event created!</span>
                     </p>
                     <div className="mt-3 flex justify-center">
                       <img
@@ -410,7 +412,7 @@ export default function AdminPage() {
                       onClick={() => copyJoinLink(lastCreated.join_url)}
                       className="mt-2 w-full rounded-xl border border-white/15 py-2 text-sm font-medium text-ink transition hover:border-white/30"
                     >
-                      {copied ? "Copied! ✅" : "Copy join link"}
+                      {copied ? <span className="inline-flex items-center gap-1.5"><IconCheck size={14} /> Copied!</span> : <span className="inline-flex items-center gap-1.5"><IconCopy size={14} /> Copy join link</span>}
                     </button>
                   </div>
                 )}
@@ -421,7 +423,7 @@ export default function AdminPage() {
                 <h2 className="font-semibold">Your events</h2>
                 {events.length === 0 ? (
                   <p className="mt-3 text-sm text-inkdim">
-                    No events yet. Create your first one above. 🎉
+                    No events yet. Create your first one above.
                   </p>
                 ) : (
                   <ul className="mt-3 space-y-2">
@@ -431,7 +433,7 @@ export default function AdminPage() {
                         onClick={() => setSelectedId(ev.id)}
                         className={`flex cursor-pointer items-center justify-between rounded-xl px-3 py-2.5 ring-1 transition ${
                           ev.id === selectedId
-                            ? "bg-fuchsia-500/15 ring-fuchsia-500/40"
+                            ? "bg-bio-teal/15 ring-bio-teal/40"
                             : "glass hover:border-bio-cyan/40"
                         }`}
                       >
@@ -481,7 +483,7 @@ export default function AdminPage() {
                           href={resolveUrl(selectedEvent.qr_url)}
                           target="_blank"
                           rel="noreferrer"
-                          className="text-xs font-medium text-fuchsia-300 hover:underline"
+                          className="text-xs font-medium text-bio-cyan hover:underline"
                         >
                           Open QR code ↗
                         </a>
@@ -513,7 +515,7 @@ export default function AdminPage() {
                               <p className="text-sm font-semibold text-ink">
                                 {p.done} of {p.total} photos uploaded
                               </p>
-                              <p className="text-sm font-bold text-fuchsia-300">{pct}%</p>
+                              <p className="text-sm font-bold text-bio-cyan">{pct}%</p>
                             </div>
                             <div className="mt-3 h-5 overflow-hidden rounded-full bg-white/10">
                               <div
@@ -559,7 +561,7 @@ export default function AdminPage() {
                         </p>
                       ) : photos.length === 0 ? (
                         <p className="py-8 text-center text-sm text-inkdim">
-                          No photos yet — upload some above. 📸
+                          No photos yet — upload some above.
                         </p>
                       ) : (
                         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
@@ -659,7 +661,7 @@ export default function AdminPage() {
                               <span
                                 className={`rounded-full px-2 py-0.5 text-xs font-medium ${
                                   u.role === "admin"
-                                    ? "bg-fuchsia-500/15 text-fuchsia-300"
+                                    ? "bg-bio-teal/15 text-bio-cyan"
                                     : "bg-white/10 text-inkdim"
                                 }`}
                               >

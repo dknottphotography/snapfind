@@ -55,7 +55,7 @@ export default function PhotoEditor({ photo, onClose, onSave, saving }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
-      <div className="w-full max-w-2xl rounded-2xl bg-zinc-900 p-6 ring-1 ring-white/10">
+      <div className="glass-deep w-full max-w-2xl rounded-2xl p-6">
         <div className="flex items-center justify-between">
           <h3 className="font-semibold text-white">Edit photo</h3>
           <button
@@ -97,7 +97,7 @@ export default function PhotoEditor({ photo, onClose, onSave, saving }) {
             onClick={() => setFlipH((f) => !f)}
             disabled={!img}
             className={`rounded-xl px-4 py-2 text-sm font-medium hover:bg-white/15 disabled:opacity-40 ${
-              flipH ? "bg-fuchsia-500/25 text-fuchsia-200" : "bg-white/10 text-zinc-200"
+              flipH ? "bg-bio-teal/25 text-bio-cyan" : "bg-white/10 text-inkdim"
             }`}
           >
             ⇄ Flip
@@ -124,7 +124,7 @@ export default function PhotoEditor({ photo, onClose, onSave, saving }) {
           <button
             onClick={handleSave}
             disabled={!dirty || saving}
-            className="rounded-xl bg-gradient-to-r from-violet-500 to-fuchsia-500 px-6 py-2 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-40"
+            className="btn-bio rounded-xl px-6 py-2 text-sm disabled:opacity-40"
           >
             {saving ? "Saving…" : "Save changes"}
           </button>
