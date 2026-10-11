@@ -1,5 +1,6 @@
 // Central API client for the SnapFind Flask backend.
-// Backend base URL: NEXT_PUBLIC_API_URL (default http://localhost:5000)
+// Backend base URL: NEXT_PUBLIC_API_URL (production: Render backend;
+// empty => same-origin relative URLs for the single-container deploy).
 
 export const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
 // When NEXT_PUBLIC_API_URL is empty, all calls are same-origin relative URLs
