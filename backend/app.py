@@ -392,16 +392,32 @@ def list_users():
 @app.patch("/api/admin/users/<int:user_id>")
 @admin_required
 def update_user(user_id):
-    """Grant or revoke a user's access by activating/deactivating their
-    account. This is the admin's only power over users."""
+    """Grant/revoke access (is_active) and promote/demote (role) a user.
+    Admins can promote trusted photographers to admin so they can upload
+    event photos from their own accounts."""
     me = request.current_user
     user = User.query.get_or_404(user_id)
     if user.id == me.id:
         return jsonify({"error": "You cannot change your own account."}), 400
     data = request.get_json(force=True, silent=True) or {}
-    if "is_active" not in data:
-        return jsonify({"error": "Nothing to update. Send {is_active}."}), 400
-    user.is_active = bool(data["is_active"])
+    changed = False
+    if "is_active" in data:
+        user.is_active = bool(data["is_active"])
+        changed = True
+    if "role" in data:
+        role = str(data["role"]).strip().lower()
+        if role not in ("admin", "guest"):
+            return jsonify({"error": "Role must be 'admin' or 'guest'."}), 400
+        if user.role == "admin" and role != "admin":
+            remaining = User.query.filter(
+                User.role == "admin", User.id != user.id
+            ).count()
+            if remaining == 0:
+                return jsonify({"error": "You cannot demote the last admin."}), 400
+        user.role = role
+        changed = True
+    if not changed:
+        return jsonify({"error": "Nothing to update. Send {is_active} and/or {role}."}), 400
     db.session.commit()
     return jsonify({"user": user.to_dict()})
 

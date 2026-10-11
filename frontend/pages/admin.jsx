@@ -267,6 +267,25 @@ export default function AdminPage() {
     }
   };
 
+  const handleToggleRole = async (u) => {
+    const toAdmin = u.role !== "admin";
+    if (
+      !window.confirm(
+        toAdmin
+          ? `Make ${u.name} (${u.email}) an admin? They'll be able to upload event photos and manage users.`
+          : `Remove admin access from ${u.name} (${u.email})? They'll become a regular guest.`
+      )
+    )
+      return;
+    setError("");
+    try {
+      const data = await updateUser(u.id, { role: toAdmin ? "admin" : "guest" });
+      setUsers((prev) => prev.map((x) => (x.id === u.id ? data.user : x)));
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
   // ---- photo editing ----
   const handleSaveEdit = async (file) => {
     if (!editingPhoto) return;
@@ -621,7 +640,10 @@ export default function AdminPage() {
               </div>
               <p className="mt-1 text-sm text-inkdim">
                 Grant or revoke access for any user — revoked users can&apos;t
-                sign in. You can&apos;t change your own account.
+                sign in. Promote trusted photographers to{" "}
+                <span className="text-bio-cyan">admin</span> so they can upload
+                event photos from their own accounts. You can&apos;t change
+                your own account.
               </p>
               <div className="mt-4">
                 {usersLoading ? (
@@ -681,16 +703,28 @@ export default function AdminPage() {
                             </td>
                             <td className="py-3 text-right">
                               {u.id !== me?.id ? (
-                                <button
-                                  onClick={() => handleToggleActive(u)}
-                                  className={`rounded-lg px-3 py-1 text-xs font-medium ${
-                                    u.is_active
-                                      ? "bg-red-500/10 text-red-300 hover:bg-red-500/20"
-                                      : "bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20"
-                                  }`}
-                                >
-                                  {u.is_active ? "Revoke access" : "Grant access"}
-                                </button>
+                                <div className="flex justify-end gap-2">
+                                  <button
+                                    onClick={() => handleToggleRole(u)}
+                                    className={`rounded-lg px-3 py-1 text-xs font-medium ${
+                                      u.role === "admin"
+                                        ? "bg-bio-teal/10 text-bio-cyan hover:bg-bio-teal/20"
+                                        : "bg-uv-magenta/10 text-uv-magenta hover:bg-uv-magenta/20"
+                                    }`}
+                                  >
+                                    {u.role === "admin" ? "Remove admin" : "Make admin"}
+                                  </button>
+                                  <button
+                                    onClick={() => handleToggleActive(u)}
+                                    className={`rounded-lg px-3 py-1 text-xs font-medium ${
+                                      u.is_active
+                                        ? "bg-red-500/10 text-red-300 hover:bg-red-500/20"
+                                        : "bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20"
+                                    }`}
+                                  >
+                                    {u.is_active ? "Revoke access" : "Grant access"}
+                                  </button>
+                                </div>
                               ) : (
                                 <span className="text-xs text-zinc-600">—</span>
                               )}
