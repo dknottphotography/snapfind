@@ -18,6 +18,9 @@ import {
   listEventPhotos,
   deletePhotoAdmin,
   editPhotoAdmin,
+  setGalleryPasscode,
+  listGalleryMedia,
+  uploadGalleryMediaProgress,
   listUsers,
   updateUser,
   resolveUrl,
@@ -45,9 +48,22 @@ export default function AdminPage() {
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState("");
 
-  const [tab, setTab] = useState("photos"); // photos | users
+  const [tab, setTab] = useState("photos"); // photos | gallery | users
   const [users, setUsers] = useState([]);
   const [usersLoading, setUsersLoading] = useState(false);
+
+  // ---- couple's gallery ----
+  const [galleryMedia, setGalleryMedia] = useState([]);
+  const [galleryLoading, setGalleryLoading] = useState(false);
+  const [galleryUploading, setGalleryUploading] = useState(false);
+  const [galleryProgress, setGalleryProgress] = useState(null);
+  const [galleryNote, setGalleryNote] = useState("");
+  const [passcodeInput, setPasscodeInput] = useState("");
+  const [passcodeSaving, setPasscodeSaving] = useState(false);
+  const [passcodeNote, setPasscodeNote] = useState("");
+  const [galleryCopied, setGalleryCopied] = useState(false);
+  const galleryCancelRef = useRef(false);
+  const galleryXhrRef = useRef(null);
 
   const [editingPhoto, setEditingPhoto] = useState(null);
   const [editSaving, setEditSaving] = useState(false);
@@ -101,6 +117,147 @@ export default function AdminPage() {
     if (selectedId) refreshPhotos(selectedId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedId]);
+
+  // ---- couple's gallery ----
+  const refreshGallery = async (eventId) => {
+    setGalleryLoading(true);
+    try {
+      const data = await listGalleryMedia(eventId);
+      setGalleryMedia(data.media || []);
+      setEvents((prev) =>
+        prev.map((e) =>
+          e.id === eventId
+            ? {
+                ...e,
+                gallery_media_count: data.media?.length ?? e.gallery_media_count,
+                has_passcode: data.has_passcode ?? e.has_passcode,
+                gallery_url: data.gallery_url ?? e.gallery_url,
+              }
+            : e
+        )
+      );
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setGalleryLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (tab === "gallery" && selectedId) refreshGallery(selectedId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab, selectedId]);
+
+  const handleSavePasscode = async (e) => {
+    e.preventDefault();
+    if (!selectedId) return;
+    setPasscodeSaving(true);
+    setPasscodeNote("");
+    setError("");
+    try {
+      const data = await setGalleryPasscode(selectedId, passcodeInput.trim());
+      setEvents((prev) =>
+        prev.map((ev) =>
+          ev.id === selectedId
+            ? { ...ev, has_passcode: data.has_passcode, gallery_url: data.gallery_url }
+            : ev
+        )
+      );
+      setPasscodeInput("");
+      setPasscodeNote(
+        data.has_passcode
+          ? "Passcode saved — share the link below with the couple."
+          : "Passcode removed — the gallery stays locked until a new one is set."
+      );
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setPasscodeSaving(false);
+    }
+  };
+
+  const copyGalleryLink = async (url) => {
+    try {
+      await navigator.clipboard.writeText(url);
+      setGalleryCopied(true);
+      setTimeout(() => setGalleryCopied(false), 2000);
+    } catch {
+      setError("Could not copy to clipboard");
+    }
+  };
+
+  const cancelGalleryUpload = () => {
+    galleryCancelRef.current = true;
+    try {
+      galleryXhrRef.current?.abort();
+    } catch {
+      /* ignore */
+    }
+  };
+
+  const handleGalleryFiles = async (files) => {
+    if (!selectedId || !files.length || galleryUploading) return;
+    galleryCancelRef.current = false;
+    galleryXhrRef.current = null;
+    setGalleryUploading(true);
+    setGalleryNote("");
+    setGalleryProgress({ done: 0, total: files.length, fileName: "Preparing…", loaded: 0, fileTotal: 1 });
+    setError("");
+    try {
+      const data = await uploadGalleryMediaProgress(
+        selectedId,
+        files,
+        (p) => setGalleryProgress({ ...p }),
+        {
+          isCancelled: () => galleryCancelRef.current,
+          onXhr: (xhr) => {
+            galleryXhrRef.current = xhr;
+          },
+        }
+      );
+      setGalleryMedia((prev) => [...(data.media || []), ...prev]);
+      setEvents((prev) =>
+        prev.map((e) =>
+          e.id === selectedId
+            ? { ...e, gallery_media_count: data.gallery_media_count ?? e.gallery_media_count }
+            : e
+        )
+      );
+      const errs = data.errors || [];
+      const savedCount = data.media?.length || 0;
+      setGalleryNote(
+        data.cancelled
+          ? `Upload stopped — ${savedCount} of ${files.length} saved.`
+          : errs.length
+            ? `Saved ${savedCount} of ${files.length}. ${errs[0]}`
+            : `Uploaded ${savedCount} file${savedCount === 1 ? "" : "s"} to Cloudinary.`
+      );
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setGalleryUploading(false);
+      setGalleryProgress(null);
+      galleryXhrRef.current = null;
+    }
+  };
+
+  const handleDeleteGalleryItem = async (item) => {
+    if (!window.confirm(`Delete "${item.filename}" from the couple's gallery?`)) return;
+    setError("");
+    try {
+      await deletePhotoAdmin(item.id);
+      setGalleryMedia((prev) => prev.filter((m) => m.id !== item.id));
+      setEvents((prev) =>
+        prev.map((e) =>
+          e.id === selectedId
+            ? { ...e, gallery_media_count: Math.max(0, (e.gallery_media_count || 1) - 1) }
+            : e
+        )
+      );
+    } catch (err) {
+      setError(err.message);
+    }
+  };
 
   // ---- handlers ----
   const handleCreateEvent = async (e) => {
@@ -366,6 +523,7 @@ export default function AdminPage() {
           <div className="mt-6 flex gap-2">
             {[
               { id: "photos", label: "Photos & Events", icon: <IconImage size={15} /> },
+              { id: "gallery", label: "Couple's Gallery", icon: <span>💍</span> },
               { id: "users", label: "Users", icon: <IconUsers size={15} /> },
             ].map((t) => (
               <button
@@ -624,6 +782,214 @@ export default function AdminPage() {
                 )}
               </div>
             </div>
+          </div>
+          )}
+
+          {tab === "gallery" && (
+          <div className="mt-6 space-y-6">
+            <div className="glass rounded-2xl p-6">
+              <h2 className="font-semibold">Couple&apos;s Gallery 💍</h2>
+              <p className="mt-1 text-sm text-inkdim">
+                A private, passcode-protected gallery for the bride &amp; groom.
+                Upload their photos and videos to Cloudinary (permanent storage),
+                set a passcode, and send them the link.
+              </p>
+              {events.length === 0 ? (
+                <p className="mt-4 text-sm text-inkdim">
+                  Create an event in the Photos &amp; Events tab first.
+                </p>
+              ) : (
+                <select
+                  value={selectedId || ""}
+                  onChange={(e) => setSelectedId(Number(e.target.value))}
+                  className="mt-4 w-full rounded-xl border border-white/10 bg-abyss/60 px-4 py-2.5 text-sm text-ink outline-none"
+                >
+                  {events.map((ev) => (
+                    <option key={ev.id} value={ev.id}>
+                      {ev.name}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
+
+            {selectedEvent && (
+              <>
+                {/* passcode + share link */}
+                <div className="glass rounded-2xl p-6">
+                  <h2 className="font-semibold">Passcode &amp; share link</h2>
+                  <p className="mt-1 text-sm text-inkdim">
+                    {selectedEvent.has_passcode
+                      ? "A passcode is set for this gallery. Change it below — the old one stops working immediately."
+                      : "No passcode set yet — the gallery stays locked until you set one."}
+                  </p>
+                  <form onSubmit={handleSavePasscode} className="mt-3 flex gap-2">
+                    <input
+                      value={passcodeInput}
+                      onChange={(e) => setPasscodeInput(e.target.value)}
+                      placeholder="e.g. ananya-2026"
+                      autoComplete="off"
+                      className="min-w-0 flex-1 rounded-xl border border-white/10 bg-abyss/60 px-4 py-2.5 text-sm text-ink outline-none transition focus:border-bio-cyan"
+                    />
+                    <button
+                      type="submit"
+                      disabled={passcodeSaving || !passcodeInput.trim()}
+                      className="btn-bio rounded-xl px-4 py-2.5 text-sm disabled:opacity-50"
+                    >
+                      {passcodeSaving ? "…" : "Set passcode"}
+                    </button>
+                  </form>
+                  {passcodeNote && (
+                    <p className="mt-2 text-sm text-emerald-300">{passcodeNote}</p>
+                  )}
+                  {selectedEvent.gallery_url && (
+                    <div className="mt-4 rounded-xl bg-white/5 p-4 ring-1 ring-white/10">
+                      <p className="text-xs uppercase tracking-wide text-inkdim">
+                        Share this link with the couple
+                      </p>
+                      <p className="mt-1 break-all text-sm text-bio-cyan">
+                        {selectedEvent.gallery_url}
+                      </p>
+                      <button
+                        onClick={() => copyGalleryLink(selectedEvent.gallery_url)}
+                        className="mt-2 w-full rounded-xl border border-white/15 py-2 text-sm font-medium text-ink transition hover:border-white/30"
+                      >
+                        {galleryCopied ? (
+                          <span className="inline-flex items-center gap-1.5"><IconCheck size={14} /> Copied!</span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1.5"><IconCopy size={14} /> Copy gallery link</span>
+                        )}
+                      </button>
+                      <p className="mt-2 text-xs text-inkdim">
+                        Send the passcode separately — the link alone opens nothing.
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {/* upload */}
+                <div className="glass rounded-2xl p-6">
+                  <h2 className="font-semibold">Upload photos &amp; videos</h2>
+                  <p className="mt-1 text-sm text-inkdim">
+                    Files go to Cloudinary (permanent storage). Keep each video
+                    under 100 MB.
+                  </p>
+                  <div className="mt-4">
+                    <UploadDropzone
+                      onFiles={handleGalleryFiles}
+                      accept="image/*,video/*"
+                      label={galleryUploading ? "Uploading…" : "Drop photos & videos here or click to browse"}
+                      hint="Photos: PNG, JPG, JPEG, WEBP, GIF · Videos: MP4, MOV, WEBM, M4V"
+                    />
+                    {galleryUploading && galleryProgress && (() => {
+                      const p = galleryProgress;
+                      const frac = p.total > 0 ? (p.done + (p.fileTotal > 0 ? p.loaded / p.fileTotal : 0)) / p.total : 0;
+                      const pct = Math.min(100, Math.round(frac * 100));
+                      return (
+                        <div className="mt-4 rounded-2xl bg-white/5 p-4 ring-1 ring-white/10">
+                          <style>{`@keyframes snapfind-stripes { from { background-position: 0 0; } to { background-position: 40px 0; } }`}</style>
+                          <div className="flex items-baseline justify-between gap-2">
+                            <p className="text-sm font-semibold text-ink">
+                              {p.done} of {p.total} files uploaded
+                            </p>
+                            <p className="text-sm font-bold text-bio-cyan">{pct}%</p>
+                          </div>
+                          <div className="mt-3 h-5 overflow-hidden rounded-full bg-white/10">
+                            <div
+                              className="h-full rounded-full transition-[width] duration-300 ease-out"
+                              style={{
+                                width: `${pct}%`,
+                                backgroundImage:
+                                  "linear-gradient(45deg, rgba(255,255,255,.25) 25%, transparent 25%, transparent 50%, rgba(255,255,255,.25) 50%, rgba(255,255,255,.25) 75%, transparent 75%)",
+                                backgroundColor: "#2dd4bf",
+                                backgroundSize: "40px 40px",
+                                animation: "snapfind-stripes 0.8s linear infinite",
+                              }}
+                            />
+                          </div>
+                          {p.fileName && (
+                            <p className="mt-2 truncate text-center text-xs text-inkdim">
+                              Uploading: {p.fileName}
+                            </p>
+                          )}
+                          <div className="mt-3 flex justify-center">
+                            <button
+                              type="button"
+                              onClick={cancelGalleryUpload}
+                              className="rounded-xl bg-red-500/15 px-5 py-2 text-sm font-semibold text-red-300 ring-1 ring-red-500/40 transition hover:bg-red-500/25"
+                            >
+                              ✕ Cancel upload
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })()}
+                    {!galleryUploading && galleryNote && (
+                      <p className="mt-2 rounded-xl bg-emerald-500/10 px-4 py-2.5 text-center text-sm text-emerald-300 ring-1 ring-emerald-500/30">
+                        {galleryNote}
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                {/* media grid */}
+                <div className="glass rounded-2xl p-6">
+                  <h2 className="font-semibold">
+                    Gallery media
+                    <span className="ml-2 text-sm font-normal text-inkdim">
+                      {galleryMedia.length} item{galleryMedia.length === 1 ? "" : "s"}
+                    </span>
+                  </h2>
+                  {galleryLoading ? (
+                    <p className="py-8 text-center text-sm text-inkdim">Loading…</p>
+                  ) : galleryMedia.length === 0 ? (
+                    <p className="py-8 text-center text-sm text-inkdim">
+                      No gallery media yet — upload some above.
+                    </p>
+                  ) : (
+                    <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
+                      {galleryMedia.map((m) => (
+                        <div
+                          key={m.id}
+                          className="group relative overflow-hidden rounded-xl ring-1 ring-white/10"
+                        >
+                          {m.media_type === "video" ? (
+                            <video
+                              src={m.url}
+                              poster={m.display_url}
+                              preload="metadata"
+                              muted
+                              playsInline
+                              className="aspect-video w-full object-cover"
+                            />
+                          ) : (
+                            <img
+                              src={m.display_url || m.url}
+                              alt={m.filename}
+                              className="aspect-square w-full object-cover"
+                              loading="lazy"
+                            />
+                          )}
+                          <span className="absolute left-2 top-2 rounded-full bg-black/70 px-2 py-0.5 text-xs font-medium text-white">
+                            {m.media_type === "video" ? "Video" : "Photo"}
+                          </span>
+                          <button
+                            onClick={() => handleDeleteGalleryItem(m)}
+                            className="absolute right-2 top-2 rounded-full bg-black/70 px-2 py-0.5 text-xs text-red-300 opacity-0 transition group-hover:opacity-100"
+                            title="Delete from gallery"
+                          >
+                            🗑
+                          </button>
+                          <p className="truncate bg-black/60 px-2 py-1 text-[11px] text-inkdim">
+                            {m.filename}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
           </div>
           )}
 
