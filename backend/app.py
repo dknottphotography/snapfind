@@ -22,6 +22,8 @@ from flask_cors import CORS
 from werkzeug.utils import secure_filename
 
 import face_engine
+import gallery_cloudinary
+from gallery_cloudinary import GalleryStorageError
 from config import Config, BASE_DIR
 from models import db, User, Event, Photo
 
@@ -32,6 +34,11 @@ db.init_app(app)
 
 for _d in (app.config["UPLOAD_FOLDER"], app.config["QRCODE_FOLDER"], app.config["SELFIE_FOLDER"]):
     os.makedirs(_d, exist_ok=True)
+
+# Point the Cloudinary SDK at the client's cloud (unsigned preset — no secret).
+gallery_cloudinary.init(
+    app.config["CLOUDINARY_CLOUD_NAME"], app.config["CLOUDINARY_UPLOAD_PRESET"]
+)
 
 ALLOWED_EXTS = {"png", "jpg", "jpeg", "webp"}
 
@@ -92,6 +99,44 @@ def is_owner(user) -> bool:
     ).strip().lower()
 
 
+# ------------------------------------------------- couple's gallery tokens
+def make_gallery_token(event: Event) -> str:
+    """Short-lived JWT scoped to ONE event's gallery (passcode unlock)."""
+    payload = {
+        "type": "gallery",
+        "gallery": event.slug,
+        "iat": datetime.utcnow(),
+        "exp": datetime.utcnow()
+        + timedelta(hours=app.config["GALLERY_TOKEN_TTL_HOURS"]),
+    }
+    return jwt.encode(payload, app.config["JWT_SECRET"], algorithm="HS256")
+
+
+def get_gallery_slug():
+    """Slug a gallery JWT was issued for, or None (missing/invalid/expired)."""
+    auth = request.headers.get("Authorization", "")
+    if not auth.startswith("Bearer "):
+        return None
+    try:
+        data = jwt.decode(auth[7:], app.config["JWT_SECRET"], algorithms=["HS256"])
+    except Exception:
+        return None
+    if data.get("type") != "gallery":
+        return None
+    return data.get("gallery")
+
+
+def gallery_token_required(fn):
+    """Request must carry a gallery JWT issued for the <slug> in the URL."""
+    @wraps(fn)
+    def wrapper(slug, *args, **kwargs):
+        token_slug = get_gallery_slug()
+        if not token_slug or token_slug != slug.strip().lower():
+            return jsonify({"error": "This gallery needs its passcode."}), 401
+        return fn(slug, *args, **kwargs)
+    return wrapper
+
+
 # ---------------------------------------------------------------- payloads
 def _public_base() -> str:
     """Absolute base URL for links/QR codes.
@@ -110,6 +155,15 @@ def _frontend_base() -> str:
     return fe if fe else _public_base()
 
 
+def _gallery_url(event: Event) -> str:
+    """Shareable link the photographer sends the couple."""
+    return f"{_frontend_base()}/couple-gallery?event={event.slug}"
+
+
+def _gallery_media_count(event: Event) -> int:
+    return event.photos.filter(Photo.cloudinary_url.isnot(None)).count()
+
+
 def event_payload(event: Event) -> dict:
     fe = _frontend_base()
     be = _public_base()
@@ -120,17 +174,38 @@ def event_payload(event: Event) -> dict:
         "join_url": f"{fe}/join?event={event.slug}",
         "qr_url": f"{be}/static/qrcodes/{event.slug}.png",
         "photo_count": event.photos.count(),
+        "gallery_url": _gallery_url(event),
+        "has_passcode": event.has_passcode,
+        "gallery_media_count": _gallery_media_count(event),
         "created_at": event.created_at.isoformat() if event.created_at else None,
     }
 
 
 def photo_payload(photo: Photo, distance=None) -> dict:
     be = _public_base()
+    if photo.cloudinary_url:
+        # Couple's gallery media: served from Cloudinary, never local disk.
+        url = photo.cloudinary_url
+        if gallery_cloudinary._cloud_name():
+            display_url = gallery_cloudinary.display_url(
+                photo.cloudinary_public_id, photo.media_type or "photo"
+            )
+            download_url = gallery_cloudinary.download_url(
+                photo.cloudinary_public_id, photo.media_type or "photo"
+            )
+        else:
+            display_url = download_url = url
+    else:
+        url = f"{be}/static/{photo.rel_path}"
+        display_url = download_url = url
     payload = {
         "id": photo.id,
         "event_id": photo.event_id,
         "filename": photo.filename,
-        "url": f"{be}/static/{photo.rel_path}",
+        "url": url,
+        "display_url": display_url,
+        "download_url": download_url,
+        "media_type": photo.media_type or "photo",
         "faces_detected": photo.faces_detected,
         "created_at": photo.created_at.isoformat() if photo.created_at else None,
     }
@@ -187,6 +262,52 @@ def public_event(slug):
         "id": event.id, "name": event.name, "slug": event.slug,
         "photo_count": event.photos.count(),
     }})
+
+
+# ------------------------------------------------- couple's gallery (public, passcode-only)
+# No login, no signup: the couple opens their private link and enters the
+# passcode the photographer gave them. Nothing about the gallery's contents
+# is revealed before a correct passcode.
+@app.get("/api/gallery/<slug>")
+def gallery_public(slug):
+    """Public info only: event name + media count. No URLs, no passcode hint."""
+    event = Event.query.filter_by(slug=slug.strip().lower()).first()
+    if not event:
+        return jsonify({"error": "Gallery not found"}), 404
+    return jsonify({"event": {
+        "name": event.name,
+        "slug": event.slug,
+        "media_count": _gallery_media_count(event),
+    }})
+
+
+@app.post("/api/gallery/<slug>/unlock")
+def gallery_unlock(slug):
+    event = Event.query.filter_by(slug=slug.strip().lower()).first()
+    if not event:
+        return jsonify({"error": "Gallery not found"}), 404
+    data = request.get_json(force=True, silent=True) or {}
+    passcode = (data.get("passcode") or "").strip()
+    if not event.check_passcode(passcode):
+        # Deliberately vague: no hint whether a passcode exists at all.
+        return jsonify({"error": "Wrong passcode — ask your photographer for the gallery passcode."}), 401
+    return jsonify({
+        "token": make_gallery_token(event),
+        "expires_in_hours": app.config["GALLERY_TOKEN_TTL_HOURS"],
+        "event": {"name": event.name, "slug": event.slug},
+    })
+
+
+@app.get("/api/gallery/<slug>/media")
+@gallery_token_required
+def gallery_media(slug):
+    event = Event.query.filter_by(slug=slug.strip().lower()).first()
+    if not event:
+        return jsonify({"error": "Gallery not found"}), 404
+    items = (event.photos
+             .filter(Photo.cloudinary_url.isnot(None))
+             .order_by(Photo.created_at.desc()).all())
+    return jsonify({"media": [photo_payload(p) for p in items], "event": event.name})
 
 
 # ---------------------------------------------------------------- auth
@@ -270,6 +391,12 @@ def delete_event(event_id):
     if event.admin_id != request.current_user.id:
         return jsonify({"error": "Not your event."}), 403
     # Remove photo files from disk (best effort), DB rows cascade.
+    # Gallery media: destroy Cloudinary assets best-effort first.
+    for photo in event.photos.all():
+        if photo.cloudinary_public_id:
+            gallery_cloudinary.delete_media(
+                photo.cloudinary_public_id, photo.media_type or "photo"
+            )
     event_dir = os.path.join(app.config["UPLOAD_FOLDER"], event.slug)
     qr_path = os.path.join(app.config["QRCODE_FOLDER"], f"{event.slug}.png")
     db.session.delete(event)
@@ -347,6 +474,114 @@ def list_event_photos(event_id):
     return jsonify({"photos": [photo_payload(p) for p in photos]})
 
 
+# ------------------------------------------------- admin: couple's gallery
+@app.put("/api/admin/events/<int:event_id>/passcode")
+@admin_required
+def set_event_passcode(event_id):
+    """Set or change the couple's gallery passcode (min 4 characters).
+
+    Send {"passcode": ""} to remove the passcode — the gallery then stays
+    locked until a new one is set. The passcode is stored only as a hash.
+    """
+    event = Event.query.get_or_404(event_id)
+    if event.admin_id != request.current_user.id:
+        return jsonify({"error": "Not your event."}), 403
+    data = request.get_json(force=True, silent=True) or {}
+    passcode = (data.get("passcode") or "").strip()
+    if not passcode:
+        event.clear_passcode()
+        db.session.commit()
+        return jsonify({"has_passcode": False, "gallery_url": _gallery_url(event)})
+    if len(passcode) < 4:
+        return jsonify({"error": "Passcode must be at least 4 characters."}), 400
+    event.set_passcode(passcode)
+    db.session.commit()
+    return jsonify({"has_passcode": True, "gallery_url": _gallery_url(event)})
+
+
+@app.post("/api/admin/events/<int:event_id>/gallery")
+@admin_required
+def upload_gallery_media(event_id):
+    """Upload photos/videos for the couple's gallery -> Cloudinary.
+
+    No Cloudinary config = 503 with a clear error. Gallery media is never
+    stored on local disk: permanence is the whole point of the gallery.
+    """
+    event = Event.query.get_or_404(event_id)
+    if event.admin_id != request.current_user.id:
+        return jsonify({"error": "Not your event."}), 403
+    cloud_name = app.config["CLOUDINARY_CLOUD_NAME"]
+    preset = app.config["CLOUDINARY_UPLOAD_PRESET"]
+    if not gallery_cloudinary.configured(cloud_name, preset):
+        return jsonify({"error": (
+            "Cloudinary is not configured on this backend. Set "
+            "CLOUDINARY_CLOUD_NAME and CLOUDINARY_UPLOAD_PRESET (unsigned "
+            "upload preset from the client's Cloudinary account) and restart."
+        )}), 503
+
+    files = request.files.getlist("files") or list(request.files.values())
+    files = [f for f in files if f and f.filename]
+    if not files:
+        return jsonify({"error": "No files received."}), 400
+
+    folder = f"{app.config['CLOUDINARY_FOLDER']}/{event.slug}"
+    saved, errors = [], []
+    for f in files:
+        ext = secure_filename(f.filename).rsplit(".", 1)[-1].lower() \
+            if "." in f.filename else ""
+        if ext in gallery_cloudinary.IMAGE_EXTS:
+            media_type = "photo"
+        elif ext in gallery_cloudinary.VIDEO_EXTS:
+            media_type = "video"
+        else:
+            errors.append(
+                f"{f.filename}: unsupported file type "
+                "(photos: png/jpg/jpeg/webp/gif; videos: mp4/mov/webm/m4v)."
+            )
+            continue
+        try:
+            up = gallery_cloudinary.upload_media(f, media_type, folder, preset)
+        except GalleryStorageError as exc:
+            errors.append(f"{f.filename}: {exc}")
+            continue
+        photo = Photo(
+            event_id=event.id,
+            filename=secure_filename(f.filename),
+            rel_path="",
+            face_embeddings="[]",
+            faces_detected=0,
+            media_type=media_type,
+            cloudinary_url=up["url"],
+            cloudinary_public_id=up["public_id"],
+        )
+        db.session.add(photo)
+        db.session.flush()
+        saved.append(photo)
+    db.session.commit()
+    status = 201 if saved else 400
+    return jsonify({
+        "media": [photo_payload(p) for p in saved],
+        "gallery_media_count": _gallery_media_count(event),
+        "errors": errors,
+    }), status
+
+
+@app.get("/api/admin/events/<int:event_id>/gallery")
+@admin_required
+def list_gallery_media(event_id):
+    event = Event.query.get_or_404(event_id)
+    if event.admin_id != request.current_user.id:
+        return jsonify({"error": "Not your event."}), 403
+    items = (event.photos
+             .filter(Photo.cloudinary_url.isnot(None))
+             .order_by(Photo.created_at.desc()).all())
+    return jsonify({
+        "media": [photo_payload(p) for p in items],
+        "gallery_url": _gallery_url(event),
+        "has_passcode": event.has_passcode,
+    })
+
+
 @app.delete("/api/admin/photos/<int:photo_id>")
 @admin_required
 def delete_photo_admin(photo_id):
@@ -360,10 +595,20 @@ def delete_photo_admin(photo_id):
 
 
 def _delete_photo_files(photo: Photo) -> None:
-    try:
-        os.remove(os.path.join(app.config["STATIC_DIR"], photo.rel_path))
-    except OSError:
-        pass
+    # Cloudinary gallery media: destroy the remote asset (best effort —
+    # destroy needs an API secret, which unsigned-preset setups don't have,
+    # so a deleted gallery item may linger in the Cloudinary media library
+    # even though it's gone from the gallery immediately).
+    if photo.cloudinary_public_id:
+        gallery_cloudinary.delete_media(
+            photo.cloudinary_public_id, photo.media_type or "photo"
+        )
+    # Local file (skip when rel_path is empty — Cloudinary rows have none).
+    if photo.rel_path:
+        try:
+            os.remove(os.path.join(app.config["STATIC_DIR"], photo.rel_path))
+        except OSError:
+            pass
 
 
 @app.put("/api/admin/photos/<int:photo_id>")
@@ -582,6 +827,12 @@ with app.app_context():
         for _ddl in (
             "ALTER TABLE users ADD COLUMN is_active BOOLEAN DEFAULT 1",
             "ALTER TABLE users ADD COLUMN phone VARCHAR(30)",
+            # Couple's gallery (2026-10-27): passcode hash per event, and
+            # Cloudinary fields on photos. Existing rows get media_type='photo'.
+            "ALTER TABLE events ADD COLUMN passcode_hash VARCHAR(255)",
+            "ALTER TABLE photos ADD COLUMN media_type VARCHAR(10) DEFAULT 'photo'",
+            "ALTER TABLE photos ADD COLUMN cloudinary_url VARCHAR(500)",
+            "ALTER TABLE photos ADD COLUMN cloudinary_public_id VARCHAR(255)",
         ):
             try:
                 db.session.execute(_sa_text(_ddl))
