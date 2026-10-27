@@ -30,8 +30,22 @@ class Config:
     # face-api.js convention is ~0.6; 0.5 is a good balance for event photos.
     FACE_MATCH_THRESHOLD = float(os.environ.get("FACE_MATCH_THRESHOLD", "0.50"))
 
-    # Max upload size per request (MB).
-    MAX_CONTENT_LENGTH = int(os.environ.get("MAX_UPLOAD_MB", "32")) * 1024 * 1024
+    # Max upload size per request (MB). Gallery videos need more headroom
+    # than guest photos, so the default is 100 — override with MAX_UPLOAD_MB.
+    MAX_CONTENT_LENGTH = int(os.environ.get("MAX_UPLOAD_MB", "100")) * 1024 * 1024
+
+    # ---- Couple's gallery (Cloudinary, UNSIGNED upload preset) ----
+    # The couple's photos/videos must live permanently — local disk on a
+    # free host is wiped on restart. Uploads go to the CLIENT's Cloudinary
+    # account via an unsigned preset: no API secret anywhere in code.
+    # The client creates the preset (Settings -> Upload -> Add upload preset,
+    # Signing mode: Unsigned) and sets these two env vars on the backend.
+    CLOUDINARY_CLOUD_NAME = os.environ.get("CLOUDINARY_CLOUD_NAME", "")
+    CLOUDINARY_UPLOAD_PRESET = os.environ.get("CLOUDINARY_UPLOAD_PRESET", "")
+    CLOUDINARY_FOLDER = os.environ.get("CLOUDINARY_FOLDER", "snapfind")
+
+    # How long a gallery passcode unlock lasts (hours).
+    GALLERY_TOKEN_TTL_HOURS = int(os.environ.get("GALLERY_TOKEN_TTL_HOURS", "24"))
 
     # First admin account, auto-created on startup if it doesn't exist.
     ADMIN_EMAIL = os.environ.get("ADMIN_EMAIL", "admin@example.com")

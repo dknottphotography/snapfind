@@ -37,4 +37,15 @@ services:
       - key: ADMIN_PASSWORD
         generateValue: true
       - key: MAX_UPLOAD_MB
-        value: 32
+        value: 100
+      # Couple's gallery (Cloudinary, unsigned preset — no secret needed).
+      # The client creates the preset in THEIR Cloudinary account
+      # (Settings -> Upload -> Add upload preset, Signing mode: Unsigned),
+      # then sets these two values in the Render dashboard (Environment).
+      # Without them, gallery uploads are rejected with a clear error.
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_UPLOAD_PRESET
+        sync: false
+      - key: CLOUDINARY_FOLDER
+        value: snapfind

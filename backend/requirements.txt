@@ -10,3 +10,6 @@ numpy==1.26.4
 # the server only stores them and compares with numpy — no ML models here.
 python-dotenv==1.0.1
 gunicorn==23.0.0
+# Couple's gallery: permanent photo/video storage on the client's
+# Cloudinary account (unsigned upload preset — no API secret in code).
+cloudinary==1.41.0

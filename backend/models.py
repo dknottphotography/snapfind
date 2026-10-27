@@ -54,9 +54,28 @@ class Event(db.Model):
     admin_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
 
+    # Couple's gallery passcode — werkzeug hash only, never the plaintext.
+    # NULL = no passcode set yet; the gallery stays locked until one is set.
+    passcode_hash = db.Column(db.String(255), nullable=True)
+
     photos = db.relationship(
         "Photo", backref="event", cascade="all, delete-orphan", lazy="dynamic"
     )
+
+    def set_passcode(self, passcode: str) -> None:
+        self.passcode_hash = generate_password_hash(passcode)
+
+    def clear_passcode(self) -> None:
+        self.passcode_hash = None
+
+    def check_passcode(self, passcode: str) -> bool:
+        if not self.passcode_hash or not passcode:
+            return False
+        return check_password_hash(self.passcode_hash, passcode)
+
+    @property
+    def has_passcode(self) -> bool:
+        return bool(self.passcode_hash)
 
 
 class Photo(db.Model):
@@ -65,12 +84,26 @@ class Photo(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     event_id = db.Column(db.Integer, db.ForeignKey("events.id"), nullable=False, index=True)
     filename = db.Column(db.String(255), nullable=False)
-    # Path relative to static/, e.g. "uploads/wedding-a1b2c3/ab12cd.jpg"
-    rel_path = db.Column(db.String(500), nullable=False)
+    # Path relative to static/, e.g. "uploads/wedding-a1b2c3/ab12cd.jpg".
+    # Local (guest-match) photos only — Cloudinary gallery media leave this
+    # empty and are served from cloudinary_url instead.
+    rel_path = db.Column(db.String(500), nullable=False, default="")
     # JSON: list of ArcFace embedding vectors (one per detected face)
     face_embeddings = db.Column(db.Text, nullable=False, default="[]")
     faces_detected = db.Column(db.Integer, nullable=False, default=0)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+
+    # ---- Couple's gallery (Cloudinary) ----
+    # 'photo' | 'video'. Gallery media live on Cloudinary (permanent);
+    # local guest-match photos stay media_type='photo' with rel_path set.
+    media_type = db.Column(db.String(10), nullable=False, default="photo")
+    cloudinary_url = db.Column(db.String(500), nullable=True)
+    cloudinary_public_id = db.Column(db.String(255), nullable=True)
+
+    @property
+    def is_gallery_media(self) -> bool:
+        """True when this row is a Cloudinary gallery item, not a local photo."""
+        return bool(self.cloudinary_url)
 
     def embedding_list(self):
         try:
