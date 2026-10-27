@@ -166,6 +166,12 @@ export default function Home() {
               >
                 Find my photos →
               </Link>
+              <Link
+                href="/couple-gallery"
+                className="btn-ghost rounded-2xl px-8 py-4 text-base font-semibold"
+              >
+                💍 Bride &amp; Groom Gallery
+              </Link>
             </div>
           </motion.div>
 
@@ -243,6 +249,12 @@ export default function Home() {
                 className="btn-ghost rounded-2xl px-8 py-4 text-base font-semibold"
               >
                 Create account
+              </Link>
+              <Link
+                href="/couple-gallery"
+                className="btn-ghost rounded-2xl px-8 py-4 text-base font-semibold"
+              >
+                💍 Bride &amp; Groom Gallery
               </Link>
             </div>
           </motion.div>

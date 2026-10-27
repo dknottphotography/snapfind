@@ -6,6 +6,7 @@ export default function UploadDropzone({
   multiple = true,
   accept = "image/*",
   label = "Drop images here or click to browse",
+  hint = "PNG, JPG, JPEG, WEBP",
 }) {
   const inputRef = useRef(null);
   const [dragOver, setDragOver] = useState(false);
@@ -47,7 +48,7 @@ export default function UploadDropzone({
           <IconUpload size={34} />
         </span>
         <p className="text-sm font-medium text-ink">{label}</p>
-        <p className="text-xs text-inkdim">PNG, JPG, JPEG, WEBP</p>
+        <p className="text-xs text-inkdim">{hint}</p>
       </div>
 
       <input

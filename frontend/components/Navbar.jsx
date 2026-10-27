@@ -36,6 +36,9 @@ export default function Navbar() {
           <Link href="/gallery" className="transition hover:text-bio-cyan">
             My Gallery
           </Link>
+          <Link href="/couple-gallery" className="transition hover:text-bio-cyan">
+            Couple&apos;s Gallery
+          </Link>
         </div>
 
         <div className="flex items-center gap-3">
