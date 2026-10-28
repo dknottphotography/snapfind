@@ -23,13 +23,13 @@ html {
 body {
   background-color: var(--abyss);
   color: var(--ink);
-  font-family: "Space Grotesk", system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-family: "Sora", system-ui, -apple-system, "Segoe UI", sans-serif;
   -webkit-font-smoothing: antialiased;
   overflow-x: hidden;
 }
 
 .font-display {
-  font-family: "Unbounded", "Space Grotesk", system-ui, sans-serif;
+  font-family: "Unbounded", "Sora", system-ui, sans-serif;
 }
 
 ::selection {
@@ -52,20 +52,12 @@ body {
 /* ---- signature utilities ---- */
 
 .eyebrow {
-  font-family: "Space Grotesk", sans-serif;
+  font-family: "Sora", sans-serif;
   font-size: 0.72rem;
   font-weight: 600;
   letter-spacing: 0.32em;
   text-transform: uppercase;
   color: var(--bio-cyan);
-}
-
-.text-glow-cyan {
-  text-shadow: 0 0 24px rgba(103, 232, 249, 0.55), 0 0 80px rgba(103, 232, 249, 0.25);
-}
-
-.text-glow-magenta {
-  text-shadow: 0 0 24px rgba(232, 121, 249, 0.55), 0 0 80px rgba(232, 121, 249, 0.25);
 }
 
 .glass {
@@ -84,17 +76,17 @@ body {
 
 .btn-bio {
   position: relative;
-  background: linear-gradient(120deg, #0e7490, #2dd4bf 45%, #e879f9 100%);
-  color: #040110;
+  background: #0e7490;
+  color: #ffffff;
   font-weight: 700;
-  box-shadow: 0 0 32px rgba(45, 212, 191, 0.35), 0 0 90px rgba(232, 121, 249, 0.18);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
   transition: transform 0.25s ease, box-shadow 0.25s ease, filter 0.25s ease;
 }
 
 .btn-bio:hover {
   transform: translateY(-2px);
   filter: brightness(1.1);
-  box-shadow: 0 0 44px rgba(45, 212, 191, 0.5), 0 0 120px rgba(232, 121, 249, 0.28);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
 }
 
 .btn-ghost {
@@ -106,7 +98,6 @@ body {
 .btn-ghost:hover {
   background: rgba(103, 232, 249, 0.08);
   border-color: rgba(103, 232, 249, 0.7);
-  box-shadow: 0 0 24px rgba(103, 232, 249, 0.25);
 }
 
 /* film grain over everything */

@@ -19,25 +19,25 @@ const STEPS = [
     n: "01",
     side: "left",
     title: "The photographer uploads",
-    desc: "Thousands of event photos flow into the studio. Faces are detected right in the browser — the server never breaks a sweat, and the free tier never blinks.",
+    desc: "Thousands of event photos flow into the studio. Faces are detected right in the browser, so the server never breaks a sweat, and the free tier never blinks.",
   },
   {
     n: "02",
     side: "right",
     title: "One QR to join",
-    desc: "Every event gets a living QR code. Guests point their camera, and they're inside — no app to install, no account maze.",
+    desc: "Every event gets a living QR code. Guests point their camera, and they're inside. No app to install, no account maze.",
   },
   {
     n: "03",
     side: "left",
     title: "A selfie becomes the key",
-    desc: "One front-camera selfie registers your Face ID. The camera opens right inside the page — private, instant, yours.",
+    desc: "One front-camera selfie registers your Face ID. The camera opens right inside the page. Private, instant, yours.",
   },
   {
     n: "04",
     side: "right",
     title: "Your gallery finds you",
-    desc: "The AI compares your Face ID against every face in every photo — group shots included — and assembles only the moments you're in.",
+    desc: "The AI compares your Face ID against every face in every photo, group shots included, and assembles only the moments you're in.",
   },
 ];
 
@@ -45,12 +45,12 @@ const FEATURES = [
   {
     icon: "✦",
     title: "Free forever",
-    desc: "No paid APIs. No cloud bills. No cards. Just open technology on the free tier.",
+    desc: "Free forever, with no paid APIs, no cloud bills, and no cards. Just open technology on the free tier.",
   },
   {
     icon: "◉",
     title: "On-device AI",
-    desc: "Face detection runs in the browser itself — fast, private, and infinitely scalable.",
+    desc: "Face detection runs in the browser itself, fast, private, and infinitely scalable.",
   },
   {
     icon: "⬢",
@@ -70,9 +70,9 @@ function StepPanel({ step }) {
     <section className="relative z-10 flex min-h-screen items-center px-4 sm:px-8">
       <div className={`reveal glass-deep w-full max-w-md rounded-3xl p-8 sm:p-10 ${align}`}>
         <p className="eyebrow">Step {step.n}</p>
-        <h3 className="font-display mt-4 text-2xl font-bold leading-snug sm:text-3xl">
+        <h2 className="font-display mt-4 text-2xl font-bold leading-snug sm:text-3xl">
           {step.title}
-        </h3>
+        </h2>
         <p className="mt-4 leading-relaxed text-inkdim">{step.desc}</p>
       </div>
     </section>
@@ -129,7 +129,7 @@ export default function Home() {
   return (
     <>
       <Head>
-        <title>SnapFind — Every guest finds their photos</title>
+        <title>SnapFind: Every guest finds their photos</title>
         <meta
           name="description"
           content="SnapFind is a free AI photo finder for events. Guests scan a QR code, check in with a selfie, and instantly receive the photos they're in."
@@ -148,16 +148,15 @@ export default function Home() {
             transition={{ duration: 1.1, ease: [0.22, 1, 0.36, 1] }}
             className="max-w-5xl"
           >
-            <p className="eyebrow">✦ &nbsp;100% free &amp; open source&nbsp; ✦</p>
             <h1 className="font-display mt-6 text-4xl font-extrabold leading-[1.05] sm:text-6xl lg:text-7xl">
               Every guest finds
               <br />
-              <span className="text-glow-cyan text-bio-cyan">their photos.</span>
+              <span className="text-bio-cyan">their photos.</span>
             </h1>
             <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-inkdim">
               Photographers upload the event. Guests scan a code, show their
-              face, and the abyss gives back only their moments — group shots
-              included. No cloud. No fees. No app.
+              face, and the abyss gives back only their moments, group shots
+              included, with no cloud, no fees, and no app.
             </p>
             <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
               <Link
@@ -170,7 +169,7 @@ export default function Home() {
                 href="/couple-gallery"
                 className="btn-ghost rounded-2xl px-8 py-4 text-base font-semibold"
               >
-                💍 Bride &amp; Groom Gallery
+                Bride &amp; Groom Gallery
               </Link>
             </div>
           </motion.div>
@@ -193,7 +192,6 @@ export default function Home() {
         {/* ---------------- FEATURES ---------------- */}
         <section className="relative z-10 px-4 py-28 sm:px-8">
           <div className="mx-auto max-w-6xl">
-            <p className="eyebrow reveal text-center">Why SnapFind</p>
             <h2 className="font-display reveal mx-auto mt-4 max-w-3xl text-center text-3xl font-bold leading-tight sm:text-5xl">
               Built for photographers,
               <br />
@@ -206,7 +204,7 @@ export default function Home() {
                   className="reveal glass group rounded-3xl p-7"
                   whileHover={{ y: -8, transition: { duration: 0.25 } }}
                 >
-                  <div className="text-glow-magenta text-3xl text-uv-magenta">
+                  <div className="text-3xl text-bio-cyan">
                     {f.icon}
                   </div>
                   <h3 className="font-display mt-5 text-base font-semibold">
@@ -231,9 +229,8 @@ export default function Home() {
             viewport={{ once: true }}
             transition={{ duration: 0.9 }}
           >
-            <p className="eyebrow">⟡ &nbsp;Your moments are waiting&nbsp; ⟡</p>
             <h2 className="font-display mt-6 text-4xl font-extrabold leading-tight sm:text-6xl">
-              Step into the <span className="text-glow-magenta text-uv-magenta">abyss.</span>
+              Step into the <span className="text-bio-cyan">abyss.</span>
               <br />
               Leave with your memories.
             </h2>
@@ -254,7 +251,7 @@ export default function Home() {
                 href="/couple-gallery"
                 className="btn-ghost rounded-2xl px-8 py-4 text-base font-semibold"
               >
-                💍 Bride &amp; Groom Gallery
+                Bride &amp; Groom Gallery
               </Link>
             </div>
           </motion.div>

@@ -41,7 +41,7 @@ export default function SignupPage() {
   return (
     <>
       <Head>
-        <title>Sign up — SnapFind</title>
+        <title>Sign up for SnapFind</title>
       </Head>
       <div className="min-h-screen bg-abyss text-ink">
         <AmbientAbyss />
@@ -51,7 +51,6 @@ export default function SignupPage() {
             onSubmit={handleSubmit}
             className="glass-deep w-full rounded-3xl p-8"
           >
-            <p className="eyebrow">✦ &nbsp;Join the abyss</p>
             <h1 className="font-display mt-3 text-2xl font-bold">Create your account</h1>
             <p className="mt-1 text-sm text-inkdim">
               One account works for every event.

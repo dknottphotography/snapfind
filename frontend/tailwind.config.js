@@ -8,14 +8,13 @@ module.exports = {
     extend: {
       fontFamily: {
         sans: [
-          "Space Grotesk",
+          "Sora",
           "system-ui",
           "-apple-system",
           "Segoe UI",
-          "Roboto",
           "sans-serif",
         ],
-        display: ["Unbounded", "Space Grotesk", "system-ui", "sans-serif"],
+        display: ["Unbounded", "Sora", "system-ui", "sans-serif"],
       },
       colors: {
         abyss: "#040110",

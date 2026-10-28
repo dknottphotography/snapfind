@@ -39,7 +39,7 @@ export default function LoginPage() {
   return (
     <>
       <Head>
-        <title>Log in — SnapFind</title>
+        <title>Log in to SnapFind</title>
       </Head>
       <div className="min-h-screen bg-abyss text-ink">
         <AmbientAbyss />
@@ -49,7 +49,6 @@ export default function LoginPage() {
             onSubmit={handleSubmit}
             className="glass-deep w-full rounded-3xl p-8"
           >
-            <p className="eyebrow">✦ &nbsp;Enter the abyss</p>
             <h1 className="font-display mt-3 text-2xl font-bold">Welcome back</h1>
             <p className="mt-1 text-sm text-inkdim">
               Log in to find your event photos.

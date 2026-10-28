@@ -34,7 +34,7 @@ export default function Join() {
     <div className="min-h-screen bg-abyss text-ink">
       <AmbientAbyss />
       <Head>
-        <title>Join event — SnapFind</title>
+        <title>Join event: SnapFind</title>
       </Head>
       <Navbar />
       <main className="relative z-10 mx-auto flex max-w-lg flex-col items-center px-6 py-24 text-center">
@@ -54,7 +54,6 @@ export default function Join() {
           </div>
         ) : (
           <div className="glass-deep rounded-3xl p-10">
-            <p className="eyebrow">✦ &nbsp;You&apos;re invited&nbsp; ✦</p>
             <h1 className="font-display mt-3 text-3xl font-bold">
               {event ? event.name : "Loading your event…"}
             </h1>
@@ -73,7 +72,7 @@ export default function Join() {
                 href="/login"
                 className="btn-ghost rounded-xl px-6 py-3 font-semibold"
               >
-                I already have an account — log in
+                I already have an account. Log in
               </Link>
             </div>
             {slug && (
