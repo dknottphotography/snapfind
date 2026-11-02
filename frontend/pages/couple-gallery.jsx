@@ -1,9 +1,6 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import Head from "next/head";
-import Link from "next/link";
-import Navbar from "../components/Navbar";
-import AmbientAbyss from "../components/AmbientAbyss";
 import {
   getGalleryPublic,
   unlockGallery,
@@ -13,12 +10,54 @@ import {
   clearGalleryToken,
 } from "../lib/api";
 
-// Static-export friendly: the event slug comes from ?event=<slug>
-// (the photographer's share link points here). Works the same in
-// `next dev` and in the static export — no dynamic route needed.
+// STANDALONE PAGE — separate from the SnapFind website.
+// This page deliberately shares nothing visual with SnapFind:
+// no SnapFind navbar, no SnapFind branding, no links back to SnapFind,
+// and a different (light, editorial) design. Couples reach it only
+// through the private link their photographer sends them.
 //
-// Flow: open your private link -> enter the passcode your photographer
-// gave you -> your photos and videos. No account, no signup.
+// Static-export friendly: the event slug comes from ?event=<slug>.
+// Flow: open private link -> enter passcode -> photos and videos.
+// No account, no signup.
+
+const serif = { fontFamily: "'Cormorant Garamond', Georgia, 'Times New Roman', serif" };
+
+function GalleryHeader({ onLock, unlocked }) {
+  return (
+    <header className="border-b border-[#E7DFD2] bg-[#FAF7F1]">
+      <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-5 sm:px-6">
+        <div>
+          <p style={serif} className="text-2xl font-semibold leading-none text-[#211D18]">
+            Private Gallery
+          </p>
+          <p className="mt-1 text-[11px] font-medium uppercase tracking-[0.22em] text-[#8A7D68]">
+            For the bride and groom only
+          </p>
+        </div>
+        {unlocked && (
+          <button
+            onClick={onLock}
+            className="rounded-md border border-[#D8CFBE] px-4 py-2 text-sm font-medium text-[#4A4238] transition hover:border-[#211D18] hover:text-[#211D18]"
+          >
+            Lock gallery
+          </button>
+        )}
+      </div>
+    </header>
+  );
+}
+
+function GalleryFooter() {
+  return (
+    <footer className="border-t border-[#E7DFD2] py-8">
+      <p className="px-4 text-center text-xs leading-relaxed text-[#8A7D68]">
+        This is a private gallery, shared only with the couple by their
+        photographer. Please keep your passcode to yourselves.
+      </p>
+    </footer>
+  );
+}
+
 export default function CoupleGallery() {
   const router = useRouter();
   const [slug, setSlug] = useState(null);
@@ -63,7 +102,6 @@ export default function CoupleGallery() {
     getGalleryPublic(slug)
       .then((d) => {
         setEventInfo(d.event);
-        // Returning visit in this tab? Try the saved unlock token first.
         const saved = getGalleryToken(slug);
         if (saved) fetchMedia(saved, true);
       })
@@ -81,7 +119,6 @@ export default function CoupleGallery() {
       setUnlocked(true);
       setUnlockError("");
     } catch (err) {
-      // Saved token expired/invalid — fall back to the passcode form.
       clearGalleryToken(slug);
       setUnlocked(false);
       if (!silent) setError(err.message);
@@ -111,6 +148,7 @@ export default function CoupleGallery() {
     setUnlocked(false);
     setMedia([]);
     setPasscode("");
+    setViewer(null);
   };
 
   const extractSlug = (text) => {
@@ -121,7 +159,7 @@ export default function CoupleGallery() {
       const s = url.searchParams.get("event");
       if (s) return s.toLowerCase();
     } catch {
-      /* not a URL — maybe a raw code */
+      /* not a URL, maybe a raw code */
     }
     if (/^[a-z0-9-]{2,60}$/i.test(t)) return t.toLowerCase();
     return null;
@@ -131,7 +169,7 @@ export default function CoupleGallery() {
     e.preventDefault();
     const s = extractSlug(codeInput);
     if (!s) {
-      setCodeError("That doesn't look like a gallery link or event code.");
+      setCodeError("That does not look like a gallery link or event code.");
       return;
     }
     router.push(`/couple-gallery?event=${encodeURIComponent(s)}`);
@@ -159,26 +197,35 @@ export default function CoupleGallery() {
     <>
       <Head>
         <title>
-          {eventInfo ? `${eventInfo.name}: Couple's Gallery` : "Couple's Gallery: SnapFind"}
+          {eventInfo ? `${eventInfo.name} — Private Gallery` : "Private Gallery"}
         </title>
+        <meta name="robots" content="noindex, nofollow" />
+        <meta
+          name="description"
+          content="A private photo and video gallery for the bride and groom. Open it with the passcode from your photographer."
+        />
+        <link
+          href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500&display=swap"
+          rel="stylesheet"
+        />
       </Head>
-      <div className="min-h-screen bg-abyss text-ink">
-        <AmbientAbyss />
-        <Navbar />
 
-        <main className="relative z-10 mx-auto max-w-6xl px-4 py-8 sm:px-6">
+      <div className="flex min-h-screen flex-col bg-[#FAF7F1] text-[#211D18]">
+        <GalleryHeader onLock={handleLock} unlocked={unlocked} />
+
+        <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-10 sm:px-6">
           {/* ---- no link yet: entry form ---- */}
           {!slug && (
-            <div className="mx-auto max-w-lg py-16 text-center">
-              <h1 className="font-display mt-4 text-3xl font-bold">
+            <div className="mx-auto max-w-lg py-14 text-center">
+              <h1 style={serif} className="text-4xl font-semibold sm:text-5xl">
                 Your private gallery
               </h1>
-              <p className="mt-3 text-inkdim">
+              <p className="mt-4 leading-relaxed text-[#5C5347]">
                 Your photographer sent you a private link. Paste it below,
-                or type your event code, and enter the passcode to open your
-                photos and videos.
+                or type your event code, then enter the passcode to open
+                your photos and videos.
               </p>
-              <form onSubmit={handleOpenGallery} className="mt-6 flex gap-2">
+              <form onSubmit={handleOpenGallery} className="mt-8 flex gap-2">
                 <input
                   value={codeInput}
                   onChange={(e) => {
@@ -186,55 +233,60 @@ export default function CoupleGallery() {
                     setCodeError("");
                   }}
                   placeholder="Paste your gallery link or event code"
-                  className="min-w-0 flex-1 rounded-xl border border-white/10 bg-abyss/60 px-4 py-3 text-sm text-ink outline-none transition focus:border-bio-cyan"
+                  className="min-w-0 flex-1 rounded-md border border-[#D8CFBE] bg-white px-4 py-3 text-sm text-[#211D18] outline-none transition placeholder:text-[#A3967F] focus:border-[#211D18]"
                 />
                 <button
                   type="submit"
                   disabled={!codeInput.trim()}
-                  className="btn-bio shrink-0 rounded-xl px-5 py-3 text-sm disabled:opacity-50"
+                  className="shrink-0 rounded-md bg-[#211D18] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#3A342C] disabled:opacity-40"
                 >
-                  Open gallery →
+                  Open gallery
                 </button>
               </form>
               {codeError && (
-                <p className="mt-3 text-sm text-red-300">{codeError}</p>
+                <p className="mt-3 text-sm text-[#B3261E]">{codeError}</p>
               )}
             </div>
           )}
 
           {/* ---- link present, info loading / not found ---- */}
           {slug && infoLoading && (
-            <p className="py-24 text-center text-sm text-inkdim">
+            <p className="py-24 text-center text-sm text-[#5C5347]">
               Loading your gallery…
             </p>
           )}
           {slug && infoError && (
-            <div className="mx-auto max-w-lg py-16 text-center">
-              <div className="glass-deep rounded-3xl p-10">
-                <h1 className="font-display text-2xl font-bold">Gallery not found</h1>
-                <p className="mt-3 text-inkdim">
+            <div className="mx-auto max-w-lg py-14 text-center">
+              <div className="rounded-lg border border-[#E7DFD2] bg-white p-10">
+                <h1 style={serif} className="text-3xl font-semibold">Gallery not found</h1>
+                <p className="mt-3 leading-relaxed text-[#5C5347]">
                   This gallery link looks invalid. Ask your photographer for
                   a fresh link.
                 </p>
-                <Link href="/couple-gallery" className="btn-ghost mt-6 inline-block rounded-xl px-6 py-3 font-semibold">
+                <button
+                  onClick={() => router.push("/couple-gallery")}
+                  className="mt-6 rounded-md border border-[#211D18] px-6 py-3 text-sm font-semibold text-[#211D18] transition hover:bg-[#211D18] hover:text-white"
+                >
                   Try another link
-                </Link>
+                </button>
               </div>
             </div>
           )}
 
           {/* ---- locked: passcode form ---- */}
           {slug && eventInfo && !unlocked && !infoLoading && (
-            <div className="mx-auto max-w-lg py-16 text-center">
-              <h1 className="font-display mt-4 text-3xl font-bold">
+            <div className="mx-auto max-w-lg py-14 text-center">
+              <p className="text-[11px] font-medium uppercase tracking-[0.22em] text-[#8A7D68]">
+                Private gallery
+              </p>
+              <h1 style={serif} className="mt-3 text-4xl font-semibold sm:text-5xl">
                 {eventInfo.name}
               </h1>
-              <p className="mt-3 text-inkdim">
+              <p className="mt-4 leading-relaxed text-[#5C5347]">
                 {eventInfo.media_count > 0
                   ? `${eventInfo.media_count} photo${eventInfo.media_count === 1 ? "" : "s"} and video${eventInfo.media_count === 1 ? "" : "s"} are waiting for you.`
                   : "Your gallery is being prepared."}{" "}
-                Enter the passcode your photographer gave you. Only you have
-                it.
+                Enter the passcode your photographer gave you. Only you have it.
               </p>
               <form onSubmit={handleUnlock} className="mx-auto mt-8 max-w-sm">
                 <input
@@ -246,22 +298,22 @@ export default function CoupleGallery() {
                   }}
                   placeholder="Gallery passcode"
                   autoComplete="off"
-                  className="w-full rounded-xl border border-white/10 bg-abyss/60 px-4 py-3 text-center text-lg tracking-[0.3em] text-ink outline-none transition focus:border-bio-cyan"
+                  className="w-full rounded-md border border-[#D8CFBE] bg-white px-4 py-3 text-center text-lg tracking-[0.3em] text-[#211D18] outline-none transition placeholder:text-base placeholder:tracking-normal placeholder:text-[#A3967F] focus:border-[#211D18]"
                 />
                 <button
                   type="submit"
                   disabled={unlocking || !passcode.trim()}
-                  className="btn-bio mt-3 w-full rounded-xl px-6 py-3 disabled:opacity-50"
+                  className="mt-3 w-full rounded-md bg-[#211D18] px-6 py-3 font-semibold text-white transition hover:bg-[#3A342C] disabled:opacity-40"
                 >
                   {unlocking ? "Unlocking…" : "Unlock my gallery"}
                 </button>
               </form>
               {unlockError && (
-                <p className="mt-4 rounded-xl bg-red-500/10 px-4 py-2.5 text-sm text-red-300 ring-1 ring-red-500/30">
+                <p className="mt-4 rounded-md border border-[#E3B7B3] bg-[#FDF0EF] px-4 py-2.5 text-sm text-[#B3261E]">
                   {unlockError}
                 </p>
               )}
-              <p className="mt-6 text-xs text-inkdim">
+              <p className="mt-6 text-xs text-[#8A7D68]">
                 No account needed. The passcode is the only key.
               </p>
             </div>
@@ -270,47 +322,42 @@ export default function CoupleGallery() {
           {/* ---- unlocked: media grid ---- */}
           {slug && eventInfo && unlocked && (
             <>
-              <div className="flex flex-wrap items-end justify-between gap-3">
+              <div className="flex flex-wrap items-end justify-between gap-4 border-b border-[#E7DFD2] pb-6">
                 <div>
-                  <h1 className="font-display mt-2 text-3xl font-bold">
+                  <p className="text-[11px] font-medium uppercase tracking-[0.22em] text-[#8A7D68]">
+                    Private gallery
+                  </p>
+                  <h1 style={serif} className="mt-2 text-4xl font-semibold">
                     {eventInfo.name}
                   </h1>
-                  <p className="mt-1 text-sm text-inkdim">
+                  <p className="mt-2 text-sm text-[#5C5347]">
                     {media.length} item{media.length === 1 ? "" : "s"}
                     {photos.length > 0 && ` · ${photos.length} photo${photos.length === 1 ? "" : "s"}`}
                     {videos.length > 0 && ` · ${videos.length} video${videos.length === 1 ? "" : "s"}`}
                   </p>
                 </div>
-                <div className="flex gap-2">
-                  <button
-                    onClick={handleDownloadAll}
-                    disabled={downloadingAll || media.length === 0}
-                    className="btn-bio rounded-xl px-5 py-2.5 text-sm disabled:opacity-50"
-                  >
-                    {downloadingAll ? "Downloading…" : "Download all"}
-                  </button>
-                  <button
-                    onClick={handleLock}
-                    className="rounded-xl border border-white/15 px-5 py-2.5 text-sm font-medium text-inkdim transition hover:border-white/30 hover:text-ink"
-                  >
-                    Lock gallery
-                  </button>
-                </div>
+                <button
+                  onClick={handleDownloadAll}
+                  disabled={downloadingAll || media.length === 0}
+                  className="rounded-md bg-[#211D18] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#3A342C] disabled:opacity-40"
+                >
+                  {downloadingAll ? "Downloading…" : "Download all"}
+                </button>
               </div>
 
               {error && (
-                <div className="mt-4 rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-2.5 text-sm text-red-300">
+                <div className="mt-4 rounded-md border border-[#E3B7B3] bg-[#FDF0EF] px-4 py-2.5 text-sm text-[#B3261E]">
                   {error}
                 </div>
               )}
 
               {mediaLoading ? (
-                <p className="py-16 text-center text-sm text-inkdim">
-                  Loading your photos &amp; videos…
+                <p className="py-16 text-center text-sm text-[#5C5347]">
+                  Loading your photos and videos…
                 </p>
               ) : media.length === 0 ? (
-                <div className="glass mt-6 rounded-2xl p-10 text-center">
-                  <p className="mt-3 text-sm text-inkdim">
+                <div className="mt-6 rounded-lg border border-[#E7DFD2] bg-white p-10 text-center">
+                  <p className="text-sm text-[#5C5347]">
                     Nothing here yet. Your photographer is still uploading.
                     Check back soon.
                   </p>
@@ -318,7 +365,7 @@ export default function CoupleGallery() {
               ) : (
                 <>
                   {downloadingAll && (
-                    <p className="mt-4 text-center text-xs text-inkdim">
+                    <p className="mt-4 text-center text-xs text-[#8A7D68]">
                       Your browser may ask you to allow multiple downloads.
                       That is normal.
                     </p>
@@ -328,10 +375,10 @@ export default function CoupleGallery() {
                       <button
                         key={item.id}
                         onClick={() => setViewer(item)}
-                        className="group relative overflow-hidden rounded-xl text-left ring-1 ring-white/10 transition hover:ring-bio-cyan/50"
+                        className="group relative overflow-hidden rounded-md text-left ring-1 ring-[#E7DFD2] transition hover:ring-[#211D18]"
                       >
                         {item.media_type === "video" ? (
-                          <span className="relative block aspect-video w-full">
+                          <span className="relative block aspect-video w-full bg-[#211D18]">
                             <video
                               src={item.url}
                               poster={item.display_url}
@@ -345,7 +392,7 @@ export default function CoupleGallery() {
                                 ▶
                               </span>
                             </span>
-                            <span className="absolute left-2 top-2 rounded-full bg-black/70 px-2 py-0.5 text-xs font-medium text-white">
+                            <span className="absolute left-2 top-2 rounded-sm bg-black/70 px-2 py-0.5 text-xs font-medium text-white">
                               Video
                             </span>
                           </span>
@@ -353,11 +400,11 @@ export default function CoupleGallery() {
                           <img
                             src={item.display_url || item.url}
                             alt={item.filename}
-                            className="aspect-square w-full object-cover"
+                            className="aspect-square w-full bg-white object-cover"
                             loading="lazy"
                           />
                         )}
-                        <span className="absolute inset-x-0 bottom-0 truncate bg-black/60 px-2 py-1 text-[11px] text-inkdim opacity-0 transition group-hover:opacity-100">
+                        <span className="absolute inset-x-0 bottom-0 truncate bg-black/60 px-2 py-1 text-[11px] text-white opacity-0 transition group-hover:opacity-100">
                           {item.filename}
                         </span>
                       </button>
@@ -369,10 +416,12 @@ export default function CoupleGallery() {
           )}
         </main>
 
+        <GalleryFooter />
+
         {/* ---- viewer: photo or video ---- */}
         {viewer && (
           <div
-            className="fixed inset-0 z-50 flex flex-col bg-black/90 backdrop-blur-sm"
+            className="fixed inset-0 z-50 flex flex-col bg-black/95"
             onClick={() => setViewer(null)}
           >
             <div
@@ -401,13 +450,13 @@ export default function CoupleGallery() {
                   controls
                   autoPlay
                   playsInline
-                  className="max-h-[85vh] max-w-full rounded-xl shadow-2xl"
+                  className="max-h-[85vh] max-w-full rounded-md shadow-2xl"
                 />
               ) : (
                 <img
                   src={viewer.url}
                   alt={viewer.filename}
-                  className="max-h-[85vh] max-w-full rounded-xl object-contain shadow-2xl"
+                  className="max-h-[85vh] max-w-full rounded-md object-contain shadow-2xl"
                 />
               )}
             </div>
@@ -418,7 +467,7 @@ export default function CoupleGallery() {
               <a
                 href={viewer.download_url || viewer.url}
                 download={viewer.filename || ""}
-                className="btn-bio rounded-xl px-5 py-2 text-sm"
+                className="rounded-md bg-white px-5 py-2 text-sm font-semibold text-[#211D18] transition hover:bg-zinc-200"
               >
                 Download
               </a>

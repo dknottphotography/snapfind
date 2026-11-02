@@ -1,7 +1,13 @@
 import Head from "next/head";
+import { useRouter } from "next/router";
 import "../styles/globals.css";
 
 export default function App({ Component, pageProps }) {
+  const router = useRouter();
+  // The couple's gallery is a standalone page with its own design.
+  // It does not share SnapFind's chrome (film grain, dark theme shell).
+  const standalone = router.pathname === "/couple-gallery";
+
   return (
     <>
       <Head>
@@ -17,9 +23,13 @@ export default function App({ Component, pageProps }) {
           rel="stylesheet"
         />
       </Head>
-      <div className="grain">
+      {standalone ? (
         <Component {...pageProps} />
-      </div>
+      ) : (
+        <div className="grain">
+          <Component {...pageProps} />
+        </div>
+      )}
     </>
   );
 }
