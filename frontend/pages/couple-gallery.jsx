@@ -16,7 +16,9 @@ import {
 // and a different (light, editorial) design. Couples reach it only
 // through the private link their photographer sends them.
 //
-// Static-export friendly: the event slug comes from ?event=<slug>.
+// Static-export friendly: the gallery slug comes from ?gallery=<slug>
+// (the photographer's generated link or QR). ?event= is accepted only as
+// a legacy fallback; galleries are standalone and are not SnapFind events.
 // Flow: open private link -> enter passcode -> photos and videos.
 // No account, no signup.
 
@@ -87,7 +89,7 @@ export default function CoupleGallery() {
 
   useEffect(() => {
     if (!router.isReady) return;
-    const s = router.query.event;
+    const s = router.query.gallery || router.query.event;
     if (!s || typeof s !== "string") return;
     setSlug(s.toLowerCase());
   }, [router.isReady, router.query]);
@@ -101,7 +103,7 @@ export default function CoupleGallery() {
     setMedia([]);
     getGalleryPublic(slug)
       .then((d) => {
-        setEventInfo(d.event);
+        setEventInfo(d.gallery || d.event);
         const saved = getGalleryToken(slug);
         if (saved) fetchMedia(saved, true);
       })
@@ -156,7 +158,7 @@ export default function CoupleGallery() {
     if (!t) return null;
     try {
       const url = new URL(t);
-      const s = url.searchParams.get("event");
+      const s = url.searchParams.get("gallery") || url.searchParams.get("event");
       if (s) return s.toLowerCase();
     } catch {
       /* not a URL, maybe a raw code */
@@ -172,7 +174,7 @@ export default function CoupleGallery() {
       setCodeError("That does not look like a gallery link or event code.");
       return;
     }
-    router.push(`/couple-gallery?event=${encodeURIComponent(s)}`);
+    router.push(`/couple-gallery?gallery=${encodeURIComponent(s)}`);
   };
 
   const handleDownloadAll = async () => {

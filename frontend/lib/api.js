@@ -158,23 +158,38 @@ export async function getGalleryMedia(slug, token) {
   return data;
 }
 
-// ---------- admin: couple's gallery ----------
+// ---------- admin: couple's galleries (standalone, NOT events) ----------
 
-export const setGalleryPasscode = (eventId, passcode) =>
-  api(`/api/admin/events/${eventId}/passcode`, {
+export const listGalleries = () => api("/api/admin/galleries");
+
+export const createGallery = (name) =>
+  api("/api/admin/galleries", { method: "POST", body: { name } });
+
+export const deleteGallery = (galleryId) =>
+  api(`/api/admin/galleries/${galleryId}`, { method: "DELETE" });
+
+export const setGalleryPasscode = (galleryId, passcode) =>
+  api(`/api/admin/galleries/${galleryId}/passcode`, {
     method: "PUT",
     body: { passcode },
   });
 
-export const listGalleryMedia = (eventId) =>
-  api(`/api/admin/events/${eventId}/gallery`);
+export const listGalleryMedia = (galleryId) =>
+  api(`/api/admin/galleries/${galleryId}/media`);
+
+export const deleteGalleryMedia = (mediaId) =>
+  api(`/api/admin/gallery-media/${mediaId}`, { method: "DELETE" });
+
+// Absolute URL of a gallery's QR code image (encodes the share link).
+export const galleryQrUrl = (slug) =>
+  `${API_URL}/api/gallery/${encodeURIComponent(slug)}/qr.png`;
 
 /**
  * Upload gallery photos/videos (Cloudinary) one at a time with progress.
  * Mirrors uploadEventPhotosProgress but without face descriptors.
  * Resolves with { media, gallery_media_count, errors }.
  */
-export function uploadGalleryMediaProgress(eventId, files, onProgress, hooks) {
+export function uploadGalleryMediaProgress(galleryId, files, onProgress, hooks) {
   const list = [...files];
   const allMedia = [];
   let mediaCount = 0;
@@ -210,7 +225,7 @@ export function uploadGalleryMediaProgress(eventId, files, onProgress, hooks) {
       const fd = new FormData();
       fd.append("files", file);
       const xhr = new XMLHttpRequest();
-      xhr.open("POST", `${API_URL}/api/admin/events/${eventId}/gallery`);
+      xhr.open("POST", `${API_URL}/api/admin/galleries/${galleryId}/media`);
       const token = getToken();
       if (token) xhr.setRequestHeader("Authorization", `Bearer ${token}`);
       if (hooks && hooks.onXhr) hooks.onXhr(xhr);

@@ -54,12 +54,54 @@ class Event(db.Model):
     admin_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
 
-    # Couple's gallery passcode — werkzeug hash only, never the plaintext.
+    photos = db.relationship(
+        "Photo", backref="event", cascade="all, delete-orphan", lazy="dynamic"
+    )
+
+
+class Photo(db.Model):
+    __tablename__ = "photos"
+
+    id = db.Column(db.Integer, primary_key=True)
+    event_id = db.Column(db.Integer, db.ForeignKey("events.id"), nullable=False, index=True)
+    filename = db.Column(db.String(255), nullable=False)
+    # Path relative to static/, e.g. "uploads/wedding-a1b2c3/ab12cd.jpg".
+    rel_path = db.Column(db.String(500), nullable=False, default="")
+    # JSON: list of ArcFace embedding vectors (one per detected face)
+    face_embeddings = db.Column(db.Text, nullable=False, default="[]")
+    faces_detected = db.Column(db.Integer, nullable=False, default=0)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+
+    def embedding_list(self):
+        try:
+            return json.loads(self.face_embeddings or "[]")
+        except Exception:
+            return []
+
+
+class CoupleGallery(db.Model):
+    """A standalone private gallery for one couple.
+
+    Deliberately NOT linked to Event: a SnapFind event is the guest
+    selfie-matching flow, while a couple's gallery is created on its own,
+    has its own name/slug/passcode, and its media never touch the events
+    or photos tables.
+    """
+
+    __tablename__ = "couple_galleries"
+
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(200), nullable=False)
+    slug = db.Column(db.String(64), unique=True, nullable=False, index=True)
+    admin_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+
+    # Passcode — werkzeug hash only, never the plaintext.
     # NULL = no passcode set yet; the gallery stays locked until one is set.
     passcode_hash = db.Column(db.String(255), nullable=True)
 
-    photos = db.relationship(
-        "Photo", backref="event", cascade="all, delete-orphan", lazy="dynamic"
+    media = db.relationship(
+        "GalleryMedia", backref="gallery", cascade="all, delete-orphan", lazy="dynamic"
     )
 
     def set_passcode(self, passcode: str) -> None:
@@ -78,35 +120,18 @@ class Event(db.Model):
         return bool(self.passcode_hash)
 
 
-class Photo(db.Model):
-    __tablename__ = "photos"
+class GalleryMedia(db.Model):
+    """One photo/video inside a CoupleGallery, stored on Cloudinary."""
+
+    __tablename__ = "gallery_media"
 
     id = db.Column(db.Integer, primary_key=True)
-    event_id = db.Column(db.Integer, db.ForeignKey("events.id"), nullable=False, index=True)
+    gallery_id = db.Column(
+        db.Integer, db.ForeignKey("couple_galleries.id"), nullable=False, index=True
+    )
     filename = db.Column(db.String(255), nullable=False)
-    # Path relative to static/, e.g. "uploads/wedding-a1b2c3/ab12cd.jpg".
-    # Local (guest-match) photos only — Cloudinary gallery media leave this
-    # empty and are served from cloudinary_url instead.
-    rel_path = db.Column(db.String(500), nullable=False, default="")
-    # JSON: list of ArcFace embedding vectors (one per detected face)
-    face_embeddings = db.Column(db.Text, nullable=False, default="[]")
-    faces_detected = db.Column(db.Integer, nullable=False, default=0)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
-
-    # ---- Couple's gallery (Cloudinary) ----
-    # 'photo' | 'video'. Gallery media live on Cloudinary (permanent);
-    # local guest-match photos stay media_type='photo' with rel_path set.
+    # 'photo' | 'video'
     media_type = db.Column(db.String(10), nullable=False, default="photo")
-    cloudinary_url = db.Column(db.String(500), nullable=True)
+    cloudinary_url = db.Column(db.String(500), nullable=False)
     cloudinary_public_id = db.Column(db.String(255), nullable=True)
-
-    @property
-    def is_gallery_media(self) -> bool:
-        """True when this row is a Cloudinary gallery item, not a local photo."""
-        return bool(self.cloudinary_url)
-
-    def embedding_list(self):
-        try:
-            return json.loads(self.face_embeddings or "[]")
-        except Exception:
-            return []
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)

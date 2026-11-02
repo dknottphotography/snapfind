@@ -18,8 +18,13 @@ import {
   listEventPhotos,
   deletePhotoAdmin,
   editPhotoAdmin,
+  listGalleries,
+  createGallery,
+  deleteGallery,
   setGalleryPasscode,
   listGalleryMedia,
+  deleteGalleryMedia,
+  galleryQrUrl,
   uploadGalleryMediaProgress,
   listUsers,
   updateUser,
@@ -64,6 +69,11 @@ export default function AdminPage() {
   const [galleryCopied, setGalleryCopied] = useState(false);
   const galleryCancelRef = useRef(false);
   const galleryXhrRef = useRef(null);
+  // Standalone galleries (separate from events): own list + own selection.
+  const [galleries, setGalleries] = useState([]);
+  const [selectedGalleryId, setSelectedGalleryId] = useState(null);
+  const [newGalleryName, setNewGalleryName] = useState("");
+  const [galleryCreating, setGalleryCreating] = useState(false);
 
   const [editingPhoto, setEditingPhoto] = useState(null);
   const [editSaving, setEditSaving] = useState(false);
@@ -100,6 +110,8 @@ export default function AdminPage() {
   }, []);
 
   const selectedEvent = events.find((e) => e.id === selectedId) || null;
+  const selectedGallery =
+    galleries.find((g) => g.id === selectedGalleryId) || null;
 
   const refreshPhotos = async (eventId) => {
     setPhotosLoading(true);
@@ -118,22 +130,46 @@ export default function AdminPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedId]);
 
-  // ---- couple's gallery ----
-  const refreshGallery = async (eventId) => {
+  // ---- couple's galleries (standalone, not events) ----
+  const loadGalleries = async () => {
+    try {
+      const data = await listGalleries();
+      const list = data.galleries || [];
+      setGalleries(list);
+      if (list.length > 0) {
+        setSelectedGalleryId((prev) =>
+          prev && list.some((g) => g.id === prev) ? prev : list[0].id
+        );
+      } else {
+        setSelectedGalleryId(null);
+      }
+      return list;
+    } catch (err) {
+      setError(err.message);
+      return [];
+    }
+  };
+
+  useEffect(() => {
+    if (tab === "gallery") loadGalleries();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab]);
+
+  const refreshGallery = async (galleryId) => {
     setGalleryLoading(true);
     try {
-      const data = await listGalleryMedia(eventId);
+      const data = await listGalleryMedia(galleryId);
       setGalleryMedia(data.media || []);
-      setEvents((prev) =>
-        prev.map((e) =>
-          e.id === eventId
+      setGalleries((prev) =>
+        prev.map((g) =>
+          g.id === galleryId
             ? {
-                ...e,
-                gallery_media_count: data.media?.length ?? e.gallery_media_count,
-                has_passcode: data.has_passcode ?? e.has_passcode,
-                gallery_url: data.gallery_url ?? e.gallery_url,
+                ...g,
+                media_count: data.media?.length ?? g.media_count,
+                has_passcode: data.has_passcode ?? g.has_passcode,
+                gallery_url: data.gallery_url ?? g.gallery_url,
               }
-            : e
+            : g
         )
       );
     } catch (err) {
@@ -144,23 +180,63 @@ export default function AdminPage() {
   };
 
   useEffect(() => {
-    if (tab === "gallery" && selectedId) refreshGallery(selectedId);
+    if (tab === "gallery" && selectedGalleryId) refreshGallery(selectedGalleryId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tab, selectedId]);
+  }, [tab, selectedGalleryId]);
+
+  const handleCreateGallery = async (e) => {
+    e.preventDefault();
+    if (!newGalleryName.trim() || galleryCreating) return;
+    setGalleryCreating(true);
+    setError("");
+    try {
+      const data = await createGallery(newGalleryName.trim());
+      const g = data.gallery;
+      setGalleries((prev) => [g, ...prev]);
+      setSelectedGalleryId(g.id);
+      setNewGalleryName("");
+      setGalleryMedia([]);
+      setPasscodeNote("");
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setGalleryCreating(false);
+    }
+  };
+
+  const handleDeleteGallery = async () => {
+    if (!selectedGallery) return;
+    if (
+      !window.confirm(
+        `Delete the gallery "${selectedGallery.name}"? Its link and QR will stop working.`
+      )
+    )
+      return;
+    setError("");
+    try {
+      await deleteGallery(selectedGallery.id);
+      const rest = galleries.filter((g) => g.id !== selectedGallery.id);
+      setGalleries(rest);
+      setSelectedGalleryId(rest.length > 0 ? rest[0].id : null);
+      setGalleryMedia([]);
+    } catch (err) {
+      setError(err.message);
+    }
+  };
 
   const handleSavePasscode = async (e) => {
     e.preventDefault();
-    if (!selectedId) return;
+    if (!selectedGalleryId) return;
     setPasscodeSaving(true);
     setPasscodeNote("");
     setError("");
     try {
-      const data = await setGalleryPasscode(selectedId, passcodeInput.trim());
-      setEvents((prev) =>
-        prev.map((ev) =>
-          ev.id === selectedId
-            ? { ...ev, has_passcode: data.has_passcode, gallery_url: data.gallery_url }
-            : ev
+      const data = await setGalleryPasscode(selectedGalleryId, passcodeInput.trim());
+      setGalleries((prev) =>
+        prev.map((g) =>
+          g.id === selectedGalleryId
+            ? { ...g, has_passcode: data.has_passcode, gallery_url: data.gallery_url }
+            : g
         )
       );
       setPasscodeInput("");
@@ -196,7 +272,7 @@ export default function AdminPage() {
   };
 
   const handleGalleryFiles = async (files) => {
-    if (!selectedId || !files.length || galleryUploading) return;
+    if (!selectedGalleryId || !files.length || galleryUploading) return;
     galleryCancelRef.current = false;
     galleryXhrRef.current = null;
     setGalleryUploading(true);
@@ -205,7 +281,7 @@ export default function AdminPage() {
     setError("");
     try {
       const data = await uploadGalleryMediaProgress(
-        selectedId,
+        selectedGalleryId,
         files,
         (p) => setGalleryProgress({ ...p }),
         {
@@ -216,11 +292,11 @@ export default function AdminPage() {
         }
       );
       setGalleryMedia((prev) => [...(data.media || []), ...prev]);
-      setEvents((prev) =>
-        prev.map((e) =>
-          e.id === selectedId
-            ? { ...e, gallery_media_count: data.gallery_media_count ?? e.gallery_media_count }
-            : e
+      setGalleries((prev) =>
+        prev.map((g) =>
+          g.id === selectedGalleryId
+            ? { ...g, media_count: data.gallery_media_count ?? g.media_count }
+            : g
         )
       );
       const errs = data.errors || [];
@@ -245,13 +321,13 @@ export default function AdminPage() {
     if (!window.confirm(`Delete "${item.filename}" from the couple's gallery?`)) return;
     setError("");
     try {
-      await deletePhotoAdmin(item.id);
+      await deleteGalleryMedia(item.id);
       setGalleryMedia((prev) => prev.filter((m) => m.id !== item.id));
-      setEvents((prev) =>
-        prev.map((e) =>
-          e.id === selectedId
-            ? { ...e, gallery_media_count: Math.max(0, (e.gallery_media_count || 1) - 1) }
-            : e
+      setGalleries((prev) =>
+        prev.map((g) =>
+          g.id === selectedGalleryId
+            ? { ...g, media_count: Math.max(0, (g.media_count || 1) - 1) }
+            : g
         )
       );
     } catch (err) {
@@ -791,35 +867,48 @@ export default function AdminPage() {
               <h2 className="font-semibold">Couple&apos;s Gallery 💍</h2>
               <p className="mt-1 text-sm text-inkdim">
                 A private, passcode-protected gallery for the bride &amp; groom.
-                Upload their photos and videos to Cloudinary (permanent storage),
-                set a passcode, and send them the link.
+                It is completely separate from SnapFind events: create a gallery
+                with the couple&apos;s name, add their photos and videos
+                (Cloudinary, permanent storage), set a passcode, and share the
+                generated link or QR with the couple.
               </p>
-              {events.length === 0 ? (
-                <p className="mt-4 text-sm text-inkdim">
-                  Create an event in the Photos &amp; Events tab first.
-                </p>
-              ) : (
+              <form onSubmit={handleCreateGallery} className="mt-4 flex gap-2">
+                <input
+                  value={newGalleryName}
+                  onChange={(e) => setNewGalleryName(e.target.value)}
+                  placeholder="Couple's name, e.g. Ananya & Rohan"
+                  className="min-w-0 flex-1 rounded-xl border border-white/10 bg-abyss/60 px-4 py-2.5 text-sm text-ink outline-none transition focus:border-bio-cyan"
+                />
+                <button
+                  type="submit"
+                  disabled={galleryCreating || !newGalleryName.trim()}
+                  className="btn-bio shrink-0 rounded-xl px-4 py-2.5 text-sm disabled:opacity-50"
+                >
+                  {galleryCreating ? "Creating…" : "Create gallery"}
+                </button>
+              </form>
+              {galleries.length > 0 && (
                 <select
-                  value={selectedId || ""}
-                  onChange={(e) => setSelectedId(Number(e.target.value))}
+                  value={selectedGalleryId || ""}
+                  onChange={(e) => setSelectedGalleryId(Number(e.target.value))}
                   className="mt-4 w-full rounded-xl border border-white/10 bg-abyss/60 px-4 py-2.5 text-sm text-ink outline-none"
                 >
-                  {events.map((ev) => (
-                    <option key={ev.id} value={ev.id}>
-                      {ev.name}
+                  {galleries.map((g) => (
+                    <option key={g.id} value={g.id}>
+                      {g.name}
                     </option>
                   ))}
                 </select>
               )}
             </div>
 
-            {selectedEvent && (
+            {selectedGallery && (
               <>
-                {/* passcode + share link */}
+                {/* passcode + share link + QR */}
                 <div className="glass rounded-2xl p-6">
-                  <h2 className="font-semibold">Passcode &amp; share link</h2>
+                  <h2 className="font-semibold">Passcode, link &amp; QR</h2>
                   <p className="mt-1 text-sm text-inkdim">
-                    {selectedEvent.has_passcode
+                    {selectedGallery.has_passcode
                       ? "A passcode is set for this gallery. Change it below — the old one stops working immediately."
                       : "No passcode set yet — the gallery stays locked until you set one."}
                   </p>
@@ -842,16 +931,16 @@ export default function AdminPage() {
                   {passcodeNote && (
                     <p className="mt-2 text-sm text-emerald-300">{passcodeNote}</p>
                   )}
-                  {selectedEvent.gallery_url && (
+                  {selectedGallery.gallery_url && (
                     <div className="mt-4 rounded-xl bg-white/5 p-4 ring-1 ring-white/10">
                       <p className="text-xs uppercase tracking-wide text-inkdim">
                         Share this link with the couple
                       </p>
                       <p className="mt-1 break-all text-sm text-bio-cyan">
-                        {selectedEvent.gallery_url}
+                        {selectedGallery.gallery_url}
                       </p>
                       <button
-                        onClick={() => copyGalleryLink(selectedEvent.gallery_url)}
+                        onClick={() => copyGalleryLink(selectedGallery.gallery_url)}
                         className="mt-2 w-full rounded-xl border border-white/15 py-2 text-sm font-medium text-ink transition hover:border-white/30"
                       >
                         {galleryCopied ? (
@@ -860,9 +949,25 @@ export default function AdminPage() {
                           <span className="inline-flex items-center gap-1.5"><IconCopy size={14} /> Copy gallery link</span>
                         )}
                       </button>
-                      <p className="mt-2 text-xs text-inkdim">
-                        Send the passcode separately — the link alone opens nothing.
-                      </p>
+                      <div className="mt-4 flex flex-col items-center gap-2">
+                        <img
+                          src={galleryQrUrl(selectedGallery.slug)}
+                          alt={`QR code for ${selectedGallery.name} gallery`}
+                          className="h-44 w-44 rounded-xl bg-white p-2"
+                          loading="lazy"
+                        />
+                        <a
+                          href={galleryQrUrl(selectedGallery.slug)}
+                          download={`${selectedGallery.slug}-gallery-qr.png`}
+                          className="inline-flex items-center gap-1.5 rounded-xl border border-white/15 px-4 py-2 text-sm font-medium text-ink transition hover:border-white/30"
+                        >
+                          <IconDownload size={14} /> Download QR to share
+                        </a>
+                        <p className="text-center text-xs text-inkdim">
+                          The couple can scan this QR instead of opening the link.
+                          Send the passcode separately — the link and QR alone open nothing.
+                        </p>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -987,6 +1092,22 @@ export default function AdminPage() {
                       ))}
                     </div>
                   )}
+                </div>
+
+                {/* danger zone */}
+                <div className="glass rounded-2xl p-6">
+                  <h2 className="font-semibold text-red-300">Delete this gallery</h2>
+                  <p className="mt-1 text-sm text-inkdim">
+                    Removes the gallery, its passcode and its media list. The
+                    couple&apos;s link and QR will stop working. This does not
+                    touch any SnapFind event.
+                  </p>
+                  <button
+                    onClick={handleDeleteGallery}
+                    className="mt-3 rounded-xl bg-red-500/15 px-5 py-2 text-sm font-semibold text-red-300 ring-1 ring-red-500/40 transition hover:bg-red-500/25"
+                  >
+                    Delete gallery
+                  </button>
                 </div>
               </>
             )}
