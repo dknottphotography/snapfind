@@ -17,18 +17,20 @@ module.exports = {
         display: ["Unbounded", "Sora", "system-ui", "sans-serif"],
       },
       colors: {
-        abyss: "#040110",
-        abyss2: "#0a0620",
+        // Theme tokens: RGB channels live in CSS variables (globals.css),
+        // swapped by [data-theme="light"] so the whole site re-themes.
+        abyss: "rgb(var(--c-abyss) / <alpha-value>)",
+        abyss2: "rgb(var(--c-abyss2) / <alpha-value>)",
         bio: {
-          cyan: "#67e8f9",
-          teal: "#2dd4bf",
+          cyan: "rgb(var(--c-biocyan) / <alpha-value>)",
+          teal: "rgb(var(--c-bioteal) / <alpha-value>)",
         },
         uv: {
           magenta: "#e879f9",
-          violet: "#a78bfa",
+          violet: "rgb(var(--c-uvviolet) / <alpha-value>)",
         },
         ember: "#fbbf24",
-        inkdim: "#a7a3c7",
+        inkdim: "rgb(var(--c-inkdim) / <alpha-value>)",
       },
     },
   },

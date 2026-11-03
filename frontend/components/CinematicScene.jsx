@@ -278,7 +278,7 @@ export default function CinematicScene() {
   const isMobile =
     typeof window !== "undefined" && window.innerWidth < 768;
   return (
-    <div className="pointer-events-none fixed inset-0 z-0" aria-hidden>
+    <div className="cinematic-scene pointer-events-none fixed inset-0 z-0" aria-hidden>
       <Canvas
         dpr={[1, isMobile ? 1.25 : 1.75]}
         gl={{ antialias: true, alpha: false, powerPreference: "high-performance" }}

@@ -14,7 +14,78 @@
   --ember: #fbbf24;
   --ink: #f4f2ff;
   --ink-dim: #a7a3c7;
+  /* RGB channel tokens consumed by Tailwind colour classes */
+  --c-abyss: 4 1 16;
+  --c-abyss2: 10 6 32;
+  --c-inkdim: 167 163 199;
+  --c-biocyan: 103 232 249;
+  --c-bioteal: 45 212 191;
+  --c-uvviolet: 167 139 250;
 }
+
+/* ============ Light theme ("day vision") ============ */
+[data-theme="light"] {
+  --abyss: #f7f3ec;
+  --abyss-2: #ffffff;
+  --ink: #17122e;
+  --ink-dim: #5c5878;
+  --c-abyss: 247 243 236;
+  --c-abyss2: 255 255 255;
+  --c-inkdim: 92 88 120;
+  --c-biocyan: 14 116 144;
+  --c-bioteal: 13 148 136;
+  --c-uvviolet: 124 58 237;
+}
+
+[data-theme="light"] body {
+  background-color: var(--abyss);
+  color: var(--ink);
+}
+
+/* The homepage's fixed WebGL scene is a dark "night" backdrop; in the
+   light theme it is hidden so page text sits on the ivory background. */
+[data-theme="light"] .cinematic-scene {
+  display: none;
+}
+
+[data-theme="light"] .glass {
+  background: rgba(23, 18, 46, 0.04);
+  border-color: rgba(23, 18, 46, 0.1);
+}
+
+[data-theme="light"] .glass-deep {
+  background: rgba(255, 255, 255, 0.82);
+  border-color: rgba(23, 18, 46, 0.1);
+}
+
+[data-theme="light"] ::-webkit-scrollbar-track {
+  background: #efe9dd;
+}
+
+/* White-based utilities were designed as light-on-dark; in the light
+   theme they become ink-on-light equivalents. Chips that sit on photos
+   or dark scrims (same-element dark backgrounds) keep white text. */
+[data-theme="light"] .text-white {
+  color: #17122e;
+}
+[data-theme="light"] .bg-black\/70.text-white,
+[data-theme="light"] .bg-black\/60.text-white,
+[data-theme="light"] .bg-black\/80.text-white,
+[data-theme="light"] .bg-emerald-500\/90.text-white,
+[data-theme="light"] .bg-white\/10.text-white {
+  color: #ffffff;
+}
+[data-theme="light"] .bg-white\/5 { background-color: rgb(23 18 46 / 0.04); }
+[data-theme="light"] .bg-white\/10 { background-color: rgb(23 18 46 / 0.07); }
+[data-theme="light"] .bg-white\/15 { background-color: rgb(23 18 46 / 0.1); }
+[data-theme="light"] .bg-white\/20 { background-color: rgb(23 18 46 / 0.13); }
+[data-theme="light"] .bg-white\/10.text-white { background-color: rgb(255 255 255 / 0.1); }
+[data-theme="light"] .border-white\/5 { border-color: rgb(23 18 46 / 0.07); }
+[data-theme="light"] .border-white\/10 { border-color: rgb(23 18 46 / 0.12); }
+[data-theme="light"] .border-white\/15 { border-color: rgb(23 18 46 / 0.16); }
+[data-theme="light"] .border-white\/30 { border-color: rgb(23 18 46 / 0.3); }
+[data-theme="light"] .ring-white\/10 { --tw-ring-color: rgb(23 18 46 / 0.12); }
+[data-theme="light"] .ring-white\/30 { --tw-ring-color: rgb(23 18 46 / 0.3); }
 
 html {
   scroll-behavior: smooth;
