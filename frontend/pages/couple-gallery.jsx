@@ -202,6 +202,7 @@ export default function CoupleGallery() {
           {eventInfo ? `${eventInfo.name} — Private Gallery` : "Private Gallery"}
         </title>
         <meta name="robots" content="noindex, nofollow" />
+        <link rel="icon" type="image/svg+xml" href="/gallery-favicon.svg" />
         <meta
           name="description"
           content="A private photo and video gallery for the bride and groom. Open it with the passcode from your photographer."

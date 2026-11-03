@@ -246,8 +246,9 @@ export default function Home() {
 
           <footer className="absolute inset-x-0 bottom-0 border-t border-white/10 py-6">
             <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-2 px-4 text-xs text-inkdim sm:flex-row sm:px-8">
-              <span className="font-display font-bold text-ink">
-                SnapFind <span className="text-bio-cyan">✦</span>
+              <span className="flex items-center gap-2 font-display font-bold text-ink">
+                <img src="/logo-mark.svg" alt="" className="h-6 w-6" />
+                Snap<span className="-ml-2 text-bio-teal">Find</span>
               </span>
               <span>Free &amp; open-source. Your photos stay yours.</span>
             </div>

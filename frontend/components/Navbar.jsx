@@ -21,11 +21,9 @@ export default function Navbar() {
     <nav className="sticky inset-x-0 top-0 z-40 border-b border-white/10 bg-abyss/60 backdrop-blur-xl">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6">
         <Link href="/" className="group flex items-center gap-2.5">
-          <span className="font-display flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-bio-teal to-uv-magenta text-base font-extrabold text-abyss shadow-md transition">
-            S
-          </span>
+          <img src="/logo-mark.svg" alt="SnapFind logo" className="h-10 w-10" />
           <span className="font-display text-lg font-bold tracking-wide text-ink">
-            SnapFind <span className="text-bio-cyan">✦</span>
+            Snap<span className="text-bio-teal">Find</span>
           </span>
         </Link>
 

@@ -1,11 +1,19 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <defs>
-    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#2dd4bf"/>
-      <stop offset="1" stop-color="#e879f9"/>
-    </linearGradient>
-  </defs>
-  <rect width="64" height="64" rx="14" fill="#040110"/>
-  <text x="32" y="44" font-family="Arial, sans-serif" font-size="36" font-weight="800" text-anchor="middle" fill="url(#g)">S</text>
-  <circle cx="50" cy="14" r="4" fill="#67e8f9"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" fill="none">
+  <!-- SnapFind logo: a 2x2 grid of event photo frames; the bottom-right
+       frame is lit — the guest, found by face match (focus brackets). -->
+  <g stroke="#1B6B5C" stroke-width="13">
+    <rect x="93" y="93" width="399" height="399" rx="72"/>
+    <rect x="533" y="93" width="399" height="399" rx="72"/>
+    <rect x="93" y="533" width="399" height="399" rx="72"/>
+  </g>
+  <rect x="533" y="533" width="399" height="399" rx="72" fill="#2DD4BF"/>
+  <circle cx="668" cy="676" r="22" fill="#040110"/>
+  <circle cx="796" cy="676" r="22" fill="#040110"/>
+  <path d="M652 745 A80 80 0 0 0 812 745" stroke="#040110" stroke-width="28" stroke-linecap="round" fill="none"/>
+  <g stroke="#67E8F9" stroke-width="17" stroke-linecap="round" fill="none">
+    <path d="M469 605 V469 H605"/>
+    <path d="M860 469 H996 V605"/>
+    <path d="M996 860 V996 H860"/>
+    <path d="M605 996 H469 V860"/>
+  </g>
 </svg>
