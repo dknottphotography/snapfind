@@ -74,6 +74,22 @@ function StepPanel({ step }) {
           {step.title}
         </h2>
         <p className="mt-4 leading-relaxed text-inkdim">{step.desc}</p>
+        {step.n === "02" && (
+          <div className="mt-7 flex items-center gap-4">
+            <img
+              src="/sample-qr.svg"
+              alt="Sample event QR code"
+              className="h-32 w-32 shrink-0 rounded-2xl bg-white p-2 shadow-lg"
+            />
+            <p className="text-sm leading-relaxed text-inkdim">
+              Sample event QR
+              <span className="mt-1 block text-xs">
+                Point a camera at it — it opens the guest join page, just
+                like a real event code.
+              </span>
+            </p>
+          </div>
+        )}
       </div>
     </section>
   );
