@@ -22,6 +22,9 @@ class User(db.Model):
     # Guest "Face ID": path relative to static/ + ArcFace embedding as JSON.
     selfie_path = db.Column(db.String(255), nullable=True)
     selfie_embedding = db.Column(db.Text, nullable=True)  # JSON list[float]
+    # When Cloudinary is configured, the selfie file lives there instead of
+    # on local disk (which free hosts wipe on restart); this is its URL.
+    selfie_cloudinary_url = db.Column(db.String(700), nullable=True)
 
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
 
@@ -40,7 +43,9 @@ class User(db.Model):
             "role": self.role,
             "is_active": bool(self.is_active),
             "has_selfie": bool(self.selfie_embedding),
-            "selfie_url": f"/static/{self.selfie_path}" if self.selfie_path else None,
+            "selfie_url": self.selfie_cloudinary_url or (
+                f"/static/{self.selfie_path}" if self.selfie_path else None
+            ),
             "created_at": self.created_at.isoformat() if self.created_at else None,
         }
 
@@ -67,6 +72,10 @@ class Photo(db.Model):
     filename = db.Column(db.String(255), nullable=False)
     # Path relative to static/, e.g. "uploads/wedding-a1b2c3/ab12cd.jpg".
     rel_path = db.Column(db.String(500), nullable=False, default="")
+    # When Cloudinary is configured, the image file lives there (permanent)
+    # instead of on local disk; rel_path then stays "" and these are set.
+    cloudinary_url = db.Column(db.String(700), nullable=True)
+    cloudinary_public_id = db.Column(db.String(400), nullable=True)
     # JSON: list of ArcFace embedding vectors (one per detected face)
     face_embeddings = db.Column(db.Text, nullable=False, default="[]")
     faces_detected = db.Column(db.Integer, nullable=False, default=0)

@@ -18,7 +18,7 @@ from functools import wraps
 import jwt
 import numpy as np
 import qrcode
-from flask import Flask, request, jsonify, send_from_directory, send_file, abort
+from flask import Flask, request, jsonify, send_from_directory, send_file, abort, redirect
 from flask_cors import CORS
 from werkzeug.utils import secure_filename
 
@@ -220,16 +220,27 @@ def event_payload(event: Event) -> dict:
     }
 
 
+def _cloudinary_ready() -> bool:
+    return gallery_cloudinary.configured(
+        app.config["CLOUDINARY_CLOUD_NAME"], app.config["CLOUDINARY_UPLOAD_PRESET"]
+    )
+
+
 def photo_payload(photo: Photo, distance=None) -> dict:
     be = _public_base()
-    url = f"{be}/static/{photo.rel_path}"
+    if photo.cloudinary_public_id:
+        url = photo.cloudinary_url
+        display_url = gallery_cloudinary.display_url(photo.cloudinary_public_id, "photo")
+        download_url = gallery_cloudinary.download_url(photo.cloudinary_public_id, "photo")
+        payload_url_fields = {"url": url, "display_url": display_url, "download_url": download_url}
+    else:
+        url = f"{be}/static/{photo.rel_path}"
+        payload_url_fields = {"url": url, "display_url": url, "download_url": url}
     payload = {
         "id": photo.id,
         "event_id": photo.event_id,
         "filename": photo.filename,
-        "url": url,
-        "display_url": url,
-        "download_url": url,
+        **payload_url_fields,
         "media_type": "photo",
         "faces_detected": photo.faces_detected,
         "created_at": photo.created_at.isoformat() if photo.created_at else None,
@@ -484,22 +495,43 @@ def upload_event_photos(event_id):
     except Exception:
         raw_descriptors = []
 
+    use_cloud = _cloudinary_ready()
+    preset = app.config["CLOUDINARY_UPLOAD_PRESET"]
+    folder = f"{app.config['CLOUDINARY_FOLDER']}/events/{event.slug}"
     saved = []
+    errors = []
     for idx, f in enumerate(files):
         ext = secure_filename(f.filename).rsplit(".", 1)[1].lower()
         filename = f"{uuid.uuid4().hex}.{ext}"
-        abs_path = os.path.join(dest_dir, filename)
-        f.save(abs_path)
 
         # Client-computed descriptors (validated server-side).
         embeddings = face_engine.sanitize_descriptors(
             raw_descriptors[idx] if idx < len(raw_descriptors) else []
         )
 
+        cloud_url = cloud_pid = None
+        rel_path = ""
+        if use_cloud:
+            # Permanent storage: the file goes to Cloudinary; only its
+            # URL/public_id are kept in the database row.
+            f.stream.seek(0)
+            try:
+                up = gallery_cloudinary.upload_media(f, "photo", folder, preset)
+                cloud_url, cloud_pid = up["url"], up["public_id"]
+            except GalleryStorageError as exc:
+                errors.append({"filename": f.filename, "error": str(exc)})
+                continue
+        else:
+            abs_path = os.path.join(dest_dir, filename)
+            f.save(abs_path)
+            rel_path = f"uploads/{event.slug}/{filename}"
+
         photo = Photo(
             event_id=event.id,
             filename=filename,
-            rel_path=f"uploads/{event.slug}/{filename}",
+            rel_path=rel_path,
+            cloudinary_url=cloud_url,
+            cloudinary_public_id=cloud_pid,
             face_embeddings=json.dumps(embeddings),
             faces_detected=len(embeddings),
         )
@@ -510,6 +542,7 @@ def upload_event_photos(event_id):
 
     return jsonify({
         "photos": [photo_payload(p) for p in saved],
+        "errors": errors,
         "photo_count": event.photos.count(),
         "face_ai": face_engine.ai_status(),
     }), 201
@@ -714,8 +747,13 @@ def delete_photo_admin(photo_id):
 
 
 def _delete_photo_files(photo: Photo) -> None:
-    # Event photos are local files only (gallery media lives in its own
-    # tables and is handled by _delete_gallery_media_files).
+    # Cloudinary-backed photos: best-effort remote destroy (it needs an API
+    # secret, which unsigned-preset setups don't have, so the asset may
+    # linger in the library even though the row is gone — same behaviour as
+    # gallery media). Local files are removed from disk as before.
+    if photo.cloudinary_public_id:
+        gallery_cloudinary.delete_media(photo.cloudinary_public_id, "photo")
+        return
     if photo.rel_path:
         try:
             os.remove(os.path.join(app.config["STATIC_DIR"], photo.rel_path))
@@ -734,8 +772,22 @@ def edit_photo_admin(photo_id):
     f = request.files.get("file") or next(iter(request.files.values()), None)
     if not f or not f.filename or not _allowed_file(f.filename):
         return jsonify({"error": "No valid image file received (png/jpg/jpeg/webp)."}), 400
-    abs_path = os.path.join(app.config["STATIC_DIR"], photo.rel_path)
-    f.save(abs_path)  # overwrite in place
+    if photo.cloudinary_public_id:
+        # Upload the edited image as a new Cloudinary asset and point the
+        # row at it (unsigned presets can't overwrite in place).
+        folder = f"{app.config['CLOUDINARY_FOLDER']}/events/{photo.event.slug}"
+        f.stream.seek(0)
+        try:
+            up = gallery_cloudinary.upload_media(
+                f, "photo", folder, app.config["CLOUDINARY_UPLOAD_PRESET"]
+            )
+        except GalleryStorageError as exc:
+            return jsonify({"error": str(exc)}), 502
+        photo.cloudinary_url = up["url"]
+        photo.cloudinary_public_id = up["public_id"]
+    else:
+        abs_path = os.path.join(app.config["STATIC_DIR"], photo.rel_path)
+        f.save(abs_path)  # overwrite in place
     try:
         raw = json.loads(request.form.get("descriptors", "[]"))
     except Exception:
@@ -824,19 +876,10 @@ def upload_selfie():
 
     ext = secure_filename(f.filename).rsplit(".", 1)[1].lower()
     filename = f"user_{user.id}_{uuid.uuid4().hex[:8]}.{ext}"
-    abs_path = os.path.join(app.config["SELFIE_FOLDER"], filename)
-
-    # Remove previous selfie file (best effort).
-    if user.selfie_path:
-        try:
-            os.remove(os.path.join(app.config["STATIC_DIR"], user.selfie_path))
-        except OSError:
-            pass
-
-    f.save(abs_path)
 
     # Face descriptor is computed in the guest's browser (face-api.js),
     # sent as a single 128-dim JSON array in the "descriptor" form field.
+    # Validate BEFORE storing anything, so a faceless selfie is never kept.
     try:
         raw = json.loads(request.form.get("descriptor", "null"))
     except Exception:
@@ -844,14 +887,38 @@ def upload_selfie():
     cleaned = face_engine.sanitize_descriptors([raw], max_faces=1)
     embedding = cleaned[0] if cleaned else None
     if embedding is None:
-        os.remove(abs_path)
         return jsonify({"error": "No face detected in that selfie. Try a clearer, front-facing photo."}), 422
 
-    user.selfie_path = f"selfies/{filename}"
+    # Remove previous local selfie file (best effort).
+    if user.selfie_path:
+        try:
+            os.remove(os.path.join(app.config["STATIC_DIR"], user.selfie_path))
+        except OSError:
+            pass
+
+    if _cloudinary_ready():
+        folder = f"{app.config['CLOUDINARY_FOLDER']}/selfies"
+        f.stream.seek(0)
+        try:
+            up = gallery_cloudinary.upload_media(
+                f, "photo", folder, app.config["CLOUDINARY_UPLOAD_PRESET"]
+            )
+        except GalleryStorageError as exc:
+            return jsonify({"error": str(exc)}), 502
+        user.selfie_path = None
+        user.selfie_cloudinary_url = up["url"]
+        selfie_url = up["url"]
+    else:
+        abs_path = os.path.join(app.config["SELFIE_FOLDER"], filename)
+        f.save(abs_path)
+        user.selfie_path = f"selfies/{filename}"
+        user.selfie_cloudinary_url = None
+        selfie_url = f"{_public_base()}/static/{user.selfie_path}"
+
     user.selfie_embedding = json.dumps(embedding)
     db.session.commit()
     return jsonify({
-        "selfie_url": f"{_public_base()}/static/{user.selfie_path}",
+        "selfie_url": selfie_url,
         "faces_detected": 1,
         "user": user.to_dict(),
     })
@@ -887,6 +954,10 @@ def download_photo(photo_id):
     d = match_distance(request.current_user, photo)
     if d is None or d > app.config["FACE_MATCH_THRESHOLD"]:
         return jsonify({"error": "This photo is not in your matches."}), 403
+    if photo.cloudinary_public_id:
+        return redirect(
+            gallery_cloudinary.download_url(photo.cloudinary_public_id, "photo")
+        )
     directory = os.path.join(app.config["STATIC_DIR"], os.path.dirname(photo.rel_path))
     return send_from_directory(directory, os.path.basename(photo.rel_path), as_attachment=True)
 
@@ -945,6 +1016,9 @@ with app.app_context():
             "ALTER TABLE photos ADD COLUMN media_type VARCHAR(10) DEFAULT 'photo'",
             "ALTER TABLE photos ADD COLUMN cloudinary_url VARCHAR(500)",
             "ALTER TABLE photos ADD COLUMN cloudinary_public_id VARCHAR(255)",
+            # All-photos-on-Cloudinary (2026-11-06): guest selfies can live
+            # on Cloudinary too, not just on local disk.
+            "ALTER TABLE users ADD COLUMN selfie_cloudinary_url VARCHAR(700)",
         ):
             try:
                 db.session.execute(_sa_text(_ddl))
