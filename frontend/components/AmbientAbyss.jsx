@@ -26,7 +26,7 @@ export default function AmbientAbyss() {
         className="absolute inset-0"
         style={{
           background:
-            "radial-gradient(ellipse 90% 70% at 50% 40%, transparent 60%, rgba(2,0,10,0.5) 100%)",
+            "radial-gradient(ellipse 90% 70% at 50% 40%, transparent 60%, rgba(87,72,44,0.12) 100%)",
         }}
       />
     </div>

@@ -1,14 +1,13 @@
 import { Html, Head, Main, NextScript } from "next/document";
 
-// Sets the theme (dark by default, or the visitor's saved choice) on
-// <html data-theme> before first paint, so there's no flash of the
-// wrong theme. The standalone couple's gallery never reads this —
-// it is always its own light design.
-const themeInit = `(function(){try{var t=localStorage.getItem("snapfind-theme");document.documentElement.dataset.theme=t==="light"?"light":"dark";}catch(e){document.documentElement.dataset.theme="dark";}})();`;
+// SnapFind is light-theme only (dark mode removed 2026-11-07 at the
+// owner's request). Pin <html data-theme="light"> before first paint so
+// no visitor ever sees a dark flash, whatever they had saved before.
+const themeInit = `document.documentElement.dataset.theme="light";`;
 
 export default function Document() {
   return (
-    <Html lang="en" data-theme="dark">
+    <Html lang="en" data-theme="light">
       <Head />
       <body>
         <script dangerouslySetInnerHTML={{ __html: themeInit }} />
