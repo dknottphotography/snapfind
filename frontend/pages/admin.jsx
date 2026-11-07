@@ -559,16 +559,15 @@ export default function AdminPage() {
     return (
       <>
         <Navbar />
-        <div className="mx-auto max-w-xl px-4 py-24 text-center text-white">
-          <div className="text-5xl">🚫</div>
-          <h1 className="mt-4 text-2xl font-bold">Admins only</h1>
+        <div className="mx-auto max-w-xl px-4 py-24 text-center text-ink">
+          <h1 className="text-2xl font-bold tracking-tight">Admins only</h1>
           <p className="mt-2 text-inkdim">
             This studio panel is for photographer accounts. Your guest gallery
             is waiting for you instead.
           </p>
           <button
             onClick={() => router.push("/gallery")}
-            className="mt-6 btn-bio rounded-xl px-6 py-2.5"
+            className="btn-solid mt-6 px-6 py-2.5 text-sm"
           >
             Go to My Gallery
           </button>
@@ -589,36 +588,35 @@ export default function AdminPage() {
         <main className="relative z-10 mx-auto max-w-7xl px-4 py-8 sm:px-6">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="font-display text-3xl font-bold">Photographer Studio</h1>
+              <h1 className="text-[28px] font-bold tracking-tight">Photographer Studio</h1>
               <p className="mt-1 text-sm text-inkdim">
                 Signed in as {me?.name} — create events, upload photos, share QR codes.
               </p>
             </div>
           </div>
 
-          <div className="mt-6 flex gap-2">
+          <div className="mt-8 flex gap-7 border-b border-[#17122e]/10">
             {[
-              { id: "photos", label: "Photos & Events", icon: <IconImage size={15} /> },
-              { id: "gallery", label: "Couple's Gallery", icon: <span>💍</span> },
-              { id: "users", label: "Users", icon: <IconUsers size={15} /> },
+              { id: "photos", label: "Photos & Events" },
+              { id: "gallery", label: "Couple's Gallery" },
+              { id: "users", label: "Users" },
             ].map((t) => (
               <button
                 key={t.id}
                 onClick={() => setTab(t.id)}
-                className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium transition ${
+                className={`-mb-px border-b-2 px-0.5 pb-3 text-sm transition ${
                   tab === t.id
-                    ? "btn-bio"
-                    : "glass text-inkdim hover:text-ink"
+                    ? "border-[#0e7490] font-semibold text-ink"
+                    : "border-transparent font-medium text-inkdim hover:text-ink"
                 }`}
               >
-                {t.icon}
                 {t.label}
               </button>
             ))}
           </div>
 
           {error && (
-            <div className="mt-4 rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-2.5 text-sm text-red-300">
+            <div className="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-2.5 text-sm text-red-800">
               {error}
             </div>
           )}
@@ -628,27 +626,27 @@ export default function AdminPage() {
             {/* ------- LEFT COLUMN ------- */}
             <div className="space-y-6">
               {/* New event */}
-              <div className="glass rounded-2xl p-6">
+              <div className="panel p-6">
                 <h2 className="font-semibold">New event</h2>
                 <form onSubmit={handleCreateEvent} className="mt-3 flex gap-2">
                   <input
                     value={newName}
                     onChange={(e) => setNewName(e.target.value)}
                     placeholder="e.g. Ananya's Wedding"
-                    className="min-w-0 flex-1 rounded-xl border border-white/10 bg-abyss/60 px-4 py-2.5 text-sm text-ink outline-none transition focus:border-bio-cyan"
+                    className="field min-w-0 flex-1 px-3.5 py-2.5 text-sm"
                   />
                   <button
                     type="submit"
                     disabled={creating || !newName.trim()}
-                    className="btn-bio rounded-xl px-4 py-2.5 text-sm disabled:opacity-50"
+                    className="btn-solid px-4 py-2.5 text-sm"
                   >
                     {creating ? "…" : "Create"}
                   </button>
                 </form>
 
                 {lastCreated && (
-                  <div className="mt-4 glass rounded-xl p-4">
-                    <p className="text-sm font-semibold text-emerald-300">
+                  <div className="panel-inset mt-4 p-4">
+                    <p className="text-sm font-semibold text-emerald-700">
                       <span className="inline-flex items-center gap-2"><IconCheck size={16} /> Event created!</span>
                     </p>
                     <div className="mt-3 flex justify-center">
@@ -663,7 +661,7 @@ export default function AdminPage() {
                     </p>
                     <button
                       onClick={() => copyJoinLink(lastCreated.join_url)}
-                      className="mt-2 w-full rounded-xl border border-white/15 py-2 text-sm font-medium text-ink transition hover:border-white/30"
+                      className="btn-outline mt-2 w-full py-2 text-sm"
                     >
                       {copied ? <span className="inline-flex items-center gap-1.5"><IconCheck size={14} /> Copied!</span> : <span className="inline-flex items-center gap-1.5"><IconCopy size={14} /> Copy join link</span>}
                     </button>
@@ -672,7 +670,7 @@ export default function AdminPage() {
               </div>
 
               {/* Events list */}
-              <div className="glass rounded-2xl p-6">
+              <div className="panel p-6">
                 <h2 className="font-semibold">Your events</h2>
                 {events.length === 0 ? (
                   <p className="mt-3 text-sm text-inkdim">
@@ -684,10 +682,10 @@ export default function AdminPage() {
                       <li
                         key={ev.id}
                         onClick={() => setSelectedId(ev.id)}
-                        className={`flex cursor-pointer items-center justify-between rounded-xl px-3 py-2.5 ring-1 transition ${
+                        className={`flex cursor-pointer items-center justify-between rounded-lg px-3 py-2.5 ring-1 transition ${
                           ev.id === selectedId
-                            ? "bg-bio-teal/15 ring-bio-teal/40"
-                            : "glass hover:border-bio-cyan/40"
+                            ? "bg-[#0e7490]/[0.07] ring-[#0e7490]/30"
+                            : "ring-transparent hover:bg-[#faf7f0] hover:ring-[#17122e]/10"
                         }`}
                       >
                         <div className="min-w-0">
@@ -703,10 +701,10 @@ export default function AdminPage() {
                             e.stopPropagation();
                             handleDeleteEvent(ev.id, ev.name);
                           }}
-                          className="ml-2 rounded-lg px-2 py-1 text-sm text-inkdim transition hover:bg-red-500/15 hover:text-red-400"
+                          className="ml-2 rounded-md px-2 py-1 text-inkdim transition hover:bg-red-50 hover:text-red-700"
                           title="Delete event"
                         >
-                          🗑
+                          <IconTrash size={15} />
                         </button>
                       </li>
                     ))}
@@ -717,7 +715,7 @@ export default function AdminPage() {
 
             {/* ------- RIGHT COLUMN: photos ------- */}
             <div className="lg:col-span-2">
-              <div className="glass rounded-2xl p-6">
+              <div className="panel p-6">
                 {!selectedEvent ? (
                   <p className="py-16 text-center text-sm text-inkdim">
                     Select or create an event to upload photos.
@@ -736,7 +734,7 @@ export default function AdminPage() {
                           href={resolveUrl(selectedEvent.qr_url)}
                           target="_blank"
                           rel="noreferrer"
-                          className="text-xs font-medium text-bio-cyan hover:underline"
+                          className="text-xs font-medium text-[#0e7490] hover:underline"
                         >
                           Open QR code ↗
                         </a>
@@ -762,25 +760,17 @@ export default function AdminPage() {
                         const frac = p.total > 0 ? (p.done + (p.fileTotal > 0 ? p.loaded / p.fileTotal : 0)) / p.total : 0;
                         const pct = Math.min(100, Math.round(frac * 100));
                         return (
-                          <div className="mt-4 rounded-2xl bg-white/5 p-4 ring-1 ring-white/10">
-                            <style>{`@keyframes snapfind-stripes { from { background-position: 0 0; } to { background-position: 40px 0; } }`}</style>
-                            <div className="flex items-baseline justify-between gap-2">
+                          <div className="panel-inset mt-4 p-4">
+                              <div className="flex items-baseline justify-between gap-2">
                               <p className="text-sm font-semibold text-ink">
                                 {p.done} of {p.total} photos uploaded
                               </p>
-                              <p className="text-sm font-bold text-bio-cyan">{pct}%</p>
+                              <p className="text-sm font-bold text-[#0e7490]">{pct}%</p>
                             </div>
-                            <div className="mt-3 h-5 overflow-hidden rounded-full bg-white/10">
+                            <div className="mt-3 h-2.5 overflow-hidden rounded-full bg-[#17122e]/10">
                               <div
-                                className="h-full rounded-full transition-[width] duration-300 ease-out"
-                                style={{
-                                  width: `${pct}%`,
-                                  backgroundImage:
-                                    "linear-gradient(45deg, rgba(255,255,255,.25) 25%, transparent 25%, transparent 50%, rgba(255,255,255,.25) 50%, rgba(255,255,255,.25) 75%, transparent 75%)",
-                                  backgroundColor: "#2dd4bf",
-                                  backgroundSize: "40px 40px",
-                                  animation: "snapfind-stripes 0.8s linear infinite",
-                                }}
+                                className="h-full rounded-full bg-[#0e7490] transition-[width] duration-300 ease-out"
+                                style={{ width: `${pct}%` }}
                               />
                             </div>
                             {p.fileName && (
@@ -792,16 +782,16 @@ export default function AdminPage() {
                               <button
                                 type="button"
                                 onClick={cancelUpload}
-                                className="rounded-xl bg-red-500/15 px-5 py-2 text-sm font-semibold text-red-300 ring-1 ring-red-500/40 transition hover:bg-red-500/25"
+                                className="btn-danger px-5 py-2 text-sm"
                               >
-                                ✕ Cancel upload
+                                Cancel upload
                               </button>
                             </div>
                           </div>
                         );
                       })()}
                       {!uploading && cancelledNote && (
-                        <p className="mt-2 rounded-xl bg-amber-500/10 px-4 py-2.5 text-center text-sm text-amber-300 ring-1 ring-amber-500/30">
+                        <p className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-2.5 text-center text-sm text-amber-800">
                           {cancelledNote}
                         </p>
                       )}
@@ -821,7 +811,7 @@ export default function AdminPage() {
                           {photos.map((p) => (
                             <div
                               key={p.id}
-                              className="group relative overflow-hidden rounded-xl ring-1 ring-white/10"
+                              className="group relative overflow-hidden rounded-lg ring-1 ring-[#17122e]/10"
                             >
                               <img
                                 src={resolveUrl(p.url)}
@@ -829,24 +819,24 @@ export default function AdminPage() {
                                 className="aspect-square w-full object-cover"
                                 loading="lazy"
                               />
-                              <span className="absolute left-2 top-2 rounded-full bg-black/70 px-2 py-0.5 text-xs font-medium text-white">
+                              <span className="absolute left-2 top-2 rounded-md bg-black/70 px-2 py-0.5 text-xs font-medium text-white">
                                 {p.faces_detected ?? 0} faces
                               </span>
                               <button
                                 onClick={() => handleDeletePhoto(p.id, p.filename)}
-                                className="absolute right-2 top-2 rounded-full bg-black/70 px-2 py-0.5 text-xs text-red-300 opacity-0 transition group-hover:opacity-100"
+                                className="absolute right-2 top-2 rounded-md bg-black/70 px-2 py-1 text-xs font-medium text-white opacity-0 transition hover:bg-red-800 group-hover:opacity-100"
                                 title="Delete photo"
                               >
-                                🗑
+                                Delete
                               </button>
                               <button
                                 onClick={() => setEditingPhoto(p)}
-                                className="absolute right-2 top-9 rounded-full bg-black/70 px-2 py-0.5 text-xs text-ink opacity-0 transition group-hover:opacity-100"
+                                className="absolute right-2 top-10 rounded-md bg-black/70 px-2 py-1 text-xs font-medium text-white opacity-0 transition hover:bg-black/90 group-hover:opacity-100"
                                 title="Edit photo (rotate / flip)"
                               >
-                                ✏️
+                                Edit
                               </button>
-                              <p className="truncate bg-black/60 px-2 py-1 text-[11px] text-inkdim">
+                              <p className="truncate bg-[#17122e]/85 px-2 py-1 text-[11px] text-white/75">
                                 {p.filename}
                               </p>
                             </div>
@@ -863,26 +853,26 @@ export default function AdminPage() {
 
           {tab === "gallery" && (
           <div className="mt-6 space-y-6">
-            <div className="glass rounded-2xl p-6">
-              <h2 className="font-semibold">Couple&apos;s Gallery 💍</h2>
+            <div className="panel p-6">
+              <h2 className="font-semibold">Couple&apos;s Gallery</h2>
               <p className="mt-1 text-sm text-inkdim">
-                A private, passcode-protected gallery for the bride &amp; groom.
-                It is completely separate from SnapFind events: create a gallery
-                with the couple&apos;s name, add their photos and videos
-                (Cloudinary, permanent storage), set a passcode, and share the
-                generated link or QR with the couple.
+                A private gallery for the couple, protected by a passcode and
+                kept fully separate from your events. Create it with the
+                couple&apos;s name, add their photos and videos (stored
+                permanently on Cloudinary), set a passcode, then share the
+                link or QR code with the couple.
               </p>
               <form onSubmit={handleCreateGallery} className="mt-4 flex gap-2">
                 <input
                   value={newGalleryName}
                   onChange={(e) => setNewGalleryName(e.target.value)}
                   placeholder="Couple's name, e.g. Ananya & Rohan"
-                  className="min-w-0 flex-1 rounded-xl border border-white/10 bg-abyss/60 px-4 py-2.5 text-sm text-ink outline-none transition focus:border-bio-cyan"
+                  className="field min-w-0 flex-1 px-3.5 py-2.5 text-sm"
                 />
                 <button
                   type="submit"
                   disabled={galleryCreating || !newGalleryName.trim()}
-                  className="btn-bio shrink-0 rounded-xl px-4 py-2.5 text-sm disabled:opacity-50"
+                  className="btn-solid shrink-0 px-4 py-2.5 text-sm"
                 >
                   {galleryCreating ? "Creating…" : "Create gallery"}
                 </button>
@@ -891,7 +881,7 @@ export default function AdminPage() {
                 <select
                   value={selectedGalleryId || ""}
                   onChange={(e) => setSelectedGalleryId(Number(e.target.value))}
-                  className="mt-4 w-full rounded-xl border border-white/10 bg-abyss/60 px-4 py-2.5 text-sm text-ink outline-none"
+                  className="field mt-4 w-full px-3.5 py-2.5 text-sm"
                 >
                   {galleries.map((g) => (
                     <option key={g.id} value={g.id}>
@@ -905,7 +895,7 @@ export default function AdminPage() {
             {selectedGallery && (
               <>
                 {/* passcode + share link + QR */}
-                <div className="glass rounded-2xl p-6">
+                <div className="panel p-6">
                   <h2 className="font-semibold">Passcode, link &amp; QR</h2>
                   <p className="mt-1 text-sm text-inkdim">
                     {selectedGallery.has_passcode
@@ -918,30 +908,30 @@ export default function AdminPage() {
                       onChange={(e) => setPasscodeInput(e.target.value)}
                       placeholder="e.g. ananya-2026"
                       autoComplete="off"
-                      className="min-w-0 flex-1 rounded-xl border border-white/10 bg-abyss/60 px-4 py-2.5 text-sm text-ink outline-none transition focus:border-bio-cyan"
+                      className="field min-w-0 flex-1 px-3.5 py-2.5 text-sm"
                     />
                     <button
                       type="submit"
                       disabled={passcodeSaving || !passcodeInput.trim()}
-                      className="btn-bio rounded-xl px-4 py-2.5 text-sm disabled:opacity-50"
+                      className="btn-solid px-4 py-2.5 text-sm"
                     >
                       {passcodeSaving ? "…" : "Set passcode"}
                     </button>
                   </form>
                   {passcodeNote && (
-                    <p className="mt-2 text-sm text-emerald-300">{passcodeNote}</p>
+                    <p className="mt-2 text-sm text-emerald-700">{passcodeNote}</p>
                   )}
                   {selectedGallery.gallery_url && (
-                    <div className="mt-4 rounded-xl bg-white/5 p-4 ring-1 ring-white/10">
+                    <div className="panel-inset mt-4 p-4">
                       <p className="text-xs uppercase tracking-wide text-inkdim">
                         Share this link with the couple
                       </p>
-                      <p className="mt-1 break-all text-sm text-bio-cyan">
+                      <p className="mt-1 break-all text-sm font-medium text-[#0e7490]">
                         {selectedGallery.gallery_url}
                       </p>
                       <button
                         onClick={() => copyGalleryLink(selectedGallery.gallery_url)}
-                        className="mt-2 w-full rounded-xl border border-white/15 py-2 text-sm font-medium text-ink transition hover:border-white/30"
+                        className="btn-outline mt-2 w-full py-2 text-sm"
                       >
                         {galleryCopied ? (
                           <span className="inline-flex items-center gap-1.5"><IconCheck size={14} /> Copied!</span>
@@ -959,7 +949,7 @@ export default function AdminPage() {
                         <a
                           href={galleryQrUrl(selectedGallery.slug)}
                           download={`${selectedGallery.slug}-gallery-qr.png`}
-                          className="inline-flex items-center gap-1.5 rounded-xl border border-white/15 px-4 py-2 text-sm font-medium text-ink transition hover:border-white/30"
+                          className="btn-outline inline-flex items-center gap-1.5 px-4 py-2 text-sm"
                         >
                           <IconDownload size={14} /> Download QR to share
                         </a>
@@ -973,7 +963,7 @@ export default function AdminPage() {
                 </div>
 
                 {/* upload */}
-                <div className="glass rounded-2xl p-6">
+                <div className="panel p-6">
                   <h2 className="font-semibold">Upload photos &amp; videos</h2>
                   <p className="mt-1 text-sm text-inkdim">
                     Files go to Cloudinary (permanent storage). Keep each video
@@ -991,15 +981,14 @@ export default function AdminPage() {
                       const frac = p.total > 0 ? (p.done + (p.fileTotal > 0 ? p.loaded / p.fileTotal : 0)) / p.total : 0;
                       const pct = Math.min(100, Math.round(frac * 100));
                       return (
-                        <div className="mt-4 rounded-2xl bg-white/5 p-4 ring-1 ring-white/10">
-                          <style>{`@keyframes snapfind-stripes { from { background-position: 0 0; } to { background-position: 40px 0; } }`}</style>
+                        <div className="panel-inset mt-4 p-4">
                           <div className="flex items-baseline justify-between gap-2">
                             <p className="text-sm font-semibold text-ink">
                               {p.done} of {p.total} files uploaded
                             </p>
-                            <p className="text-sm font-bold text-bio-cyan">{pct}%</p>
+                            <p className="text-sm font-bold text-[#0e7490]">{pct}%</p>
                           </div>
-                          <div className="mt-3 h-5 overflow-hidden rounded-full bg-white/10">
+                          <div className="mt-3 h-2.5 overflow-hidden rounded-full bg-[#17122e]/10">
                             <div
                               className="h-full rounded-full transition-[width] duration-300 ease-out"
                               style={{
@@ -1021,16 +1010,16 @@ export default function AdminPage() {
                             <button
                               type="button"
                               onClick={cancelGalleryUpload}
-                              className="rounded-xl bg-red-500/15 px-5 py-2 text-sm font-semibold text-red-300 ring-1 ring-red-500/40 transition hover:bg-red-500/25"
+                              className="btn-danger px-5 py-2 text-sm"
                             >
-                              ✕ Cancel upload
+                              Cancel upload
                             </button>
                           </div>
                         </div>
                       );
                     })()}
                     {!galleryUploading && galleryNote && (
-                      <p className="mt-2 rounded-xl bg-emerald-500/10 px-4 py-2.5 text-center text-sm text-emerald-300 ring-1 ring-emerald-500/30">
+                      <p className="mt-2 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-center text-sm text-emerald-800">
                         {galleryNote}
                       </p>
                     )}
@@ -1038,7 +1027,7 @@ export default function AdminPage() {
                 </div>
 
                 {/* media grid */}
-                <div className="glass rounded-2xl p-6">
+                <div className="panel p-6">
                   <h2 className="font-semibold">
                     Gallery media
                     <span className="ml-2 text-sm font-normal text-inkdim">
@@ -1056,7 +1045,7 @@ export default function AdminPage() {
                       {galleryMedia.map((m) => (
                         <div
                           key={m.id}
-                          className="group relative overflow-hidden rounded-xl ring-1 ring-white/10"
+                          className="group relative overflow-hidden rounded-lg ring-1 ring-[#17122e]/10"
                         >
                           {m.media_type === "video" ? (
                             <video
@@ -1075,17 +1064,17 @@ export default function AdminPage() {
                               loading="lazy"
                             />
                           )}
-                          <span className="absolute left-2 top-2 rounded-full bg-black/70 px-2 py-0.5 text-xs font-medium text-white">
+                          <span className="absolute left-2 top-2 rounded-md bg-black/70 px-2 py-0.5 text-xs font-medium text-white">
                             {m.media_type === "video" ? "Video" : "Photo"}
                           </span>
                           <button
                             onClick={() => handleDeleteGalleryItem(m)}
-                            className="absolute right-2 top-2 rounded-full bg-black/70 px-2 py-0.5 text-xs text-red-300 opacity-0 transition group-hover:opacity-100"
+                            className="absolute right-2 top-2 rounded-md bg-black/70 px-2 py-1 text-xs font-medium text-white opacity-0 transition hover:bg-red-800 group-hover:opacity-100"
                             title="Delete from gallery"
                           >
-                            🗑
+                            Delete
                           </button>
-                          <p className="truncate bg-black/60 px-2 py-1 text-[11px] text-inkdim">
+                          <p className="truncate bg-[#17122e]/85 px-2 py-1 text-[11px] text-white/75">
                             {m.filename}
                           </p>
                         </div>
@@ -1095,8 +1084,8 @@ export default function AdminPage() {
                 </div>
 
                 {/* danger zone */}
-                <div className="glass rounded-2xl p-6">
-                  <h2 className="font-semibold text-red-300">Delete this gallery</h2>
+                <div className="panel p-6">
+                  <h2 className="font-semibold text-red-700">Delete this gallery</h2>
                   <p className="mt-1 text-sm text-inkdim">
                     Removes the gallery, its passcode and its media list. The
                     couple&apos;s link and QR will stop working. This does not
@@ -1104,7 +1093,7 @@ export default function AdminPage() {
                   </p>
                   <button
                     onClick={handleDeleteGallery}
-                    className="mt-3 rounded-xl bg-red-500/15 px-5 py-2 text-sm font-semibold text-red-300 ring-1 ring-red-500/40 transition hover:bg-red-500/25"
+                    className="btn-danger mt-3 px-5 py-2 text-sm"
                   >
                     Delete gallery
                   </button>
@@ -1115,28 +1104,28 @@ export default function AdminPage() {
           )}
 
           {tab === "users" && (
-            <div className="mt-6 glass rounded-2xl p-6">
+            <div className="panel mt-6 p-6">
               <div className="flex items-center justify-between">
                 <h2 className="font-semibold">User access control</h2>
                 <button
                   onClick={refreshUsers}
-                  className="rounded-xl bg-white/10 px-3 py-1.5 text-xs font-medium text-inkdim hover:bg-white/15"
+                  className="btn-outline inline-flex items-center gap-1.5 px-3 py-1.5 text-xs"
                 >
-                  ↻ Refresh
+                  <IconRefresh size={13} /> Refresh
                 </button>
               </div>
               <p className="mt-1 text-sm text-inkdim">
                 {me?.is_owner ? (
                   <>
                     As the main admin you can promote guests to{" "}
-                    <span className="text-bio-cyan">admin</span>, remove admin
+                    <span className="font-medium text-[#0e7490]">admin</span>, remove admin
                     access, or grant/revoke sign-in access. Your own account
                     can&apos;t be changed by anyone.
                   </>
                 ) : (
                   <>
                     You can promote guests to{" "}
-                    <span className="text-bio-cyan">admin</span> so they can
+                    <span className="font-medium text-[#0e7490]">admin</span> so they can
                     upload from their own accounts. Only the main admin can
                     remove access or revoke accounts.
                   </>
@@ -1164,9 +1153,9 @@ export default function AdminPage() {
                       </thead>
                       <tbody>
                         {users.map((u) => (
-                          <tr key={u.id} className="border-t border-white/5">
+                          <tr key={u.id} className="border-t border-[#17122e]/[0.07]">
                             <td className="py-3 pr-4">
-                              <p className="font-medium text-white">
+                              <p className="font-medium text-ink">
                                 {u.name}{" "}
                                 {u.id === me?.id && (
                                   <span className="text-xs font-normal text-inkdim">
@@ -1177,24 +1166,14 @@ export default function AdminPage() {
                               <p className="text-xs text-inkdim">{u.email}</p>
                             </td>
                             <td className="py-3 pr-4">
-                              <span
-                                className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-                                  u.role === "admin"
-                                    ? "bg-bio-teal/15 text-bio-cyan"
-                                    : "bg-white/10 text-inkdim"
-                                }`}
-                              >
-                                {u.is_owner ? "owner" : u.role}
+                              <span className="inline-flex items-center gap-1.5 text-xs font-medium">
+                                <span className={`h-1.5 w-1.5 rounded-full ${u.role === "admin" ? "bg-[#0e7490]" : "bg-[#17122e]/30"}`} />
+                                {u.is_owner ? "Owner" : u.role === "admin" ? "Admin" : "Guest"}
                               </span>
                             </td>
                             <td className="py-3 pr-4">
-                              <span
-                                className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-                                  u.is_active
-                                    ? "bg-emerald-500/15 text-emerald-300"
-                                    : "bg-red-500/15 text-red-300"
-                                }`}
-                              >
+                              <span className="inline-flex items-center gap-1.5 text-xs font-medium">
+                                <span className={`h-1.5 w-1.5 rounded-full ${u.is_active ? "bg-emerald-600" : "bg-red-600"}`} />
                                 {u.is_active ? "Active" : "Disabled"}
                               </span>
                             </td>
@@ -1204,7 +1183,7 @@ export default function AdminPage() {
                                   {u.role !== "admin" ? (
                                     <button
                                       onClick={() => handleToggleRole(u)}
-                                      className="rounded-lg bg-uv-magenta/10 px-3 py-1 text-xs font-medium text-uv-magenta hover:bg-uv-magenta/20"
+                                      className="rounded-md border border-[#0e7490]/40 px-3 py-1 text-xs font-medium text-[#0e7490] transition hover:bg-[#0e7490]/5"
                                     >
                                       Make admin
                                     </button>
@@ -1212,7 +1191,7 @@ export default function AdminPage() {
                                     me?.is_owner && (
                                       <button
                                         onClick={() => handleToggleRole(u)}
-                                        className="rounded-lg bg-bio-teal/10 px-3 py-1 text-xs font-medium text-bio-cyan hover:bg-bio-teal/20"
+                                        className="btn-outline px-3 py-1 text-xs"
                                       >
                                         Remove admin
                                       </button>
@@ -1221,10 +1200,10 @@ export default function AdminPage() {
                                   {me?.is_owner && (
                                     <button
                                       onClick={() => handleToggleActive(u)}
-                                      className={`rounded-lg px-3 py-1 text-xs font-medium ${
+                                      className={`rounded-md border px-3 py-1 text-xs font-medium transition ${
                                         u.is_active
-                                          ? "bg-red-500/10 text-red-300 hover:bg-red-500/20"
-                                          : "bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20"
+                                          ? "border-red-300 text-red-700 hover:bg-red-50"
+                                          : "border-emerald-300 text-emerald-700 hover:bg-emerald-50"
                                       }`}
                                     >
                                       {u.is_active ? "Revoke access" : "Grant access"}
@@ -1232,7 +1211,7 @@ export default function AdminPage() {
                                   )}
                                 </div>
                               ) : (
-                                <span className="text-xs text-zinc-600">—</span>
+                                <span className="text-xs text-inkdim">—</span>
                               )}
                             </td>
                           </tr>

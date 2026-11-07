@@ -38,13 +38,13 @@ export default function UploadDropzone({
           setDragOver(false);
           pick(e.dataTransfer.files);
         }}
-        className={`flex cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed px-6 py-10 text-center transition ${
+        className={`flex cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border border-dashed px-6 py-10 text-center transition ${
           dragOver
-            ? "border-bio-cyan bg-bio-teal/10"
-            : "border-white/15 bg-white/[0.03] hover:border-bio-cyan/40"
+            ? "border-[#0e7490] bg-[#0e7490]/[0.06]"
+            : "border-[#17122e]/25 bg-[#faf7f0] hover:border-[#0e7490]/50"
         }`}
       >
-        <span className="text-bio-cyan">
+        <span className="text-[#0e7490]">
           <IconUpload size={34} />
         </span>
         <p className="text-sm font-medium text-ink">{label}</p>

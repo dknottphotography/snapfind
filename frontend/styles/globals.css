@@ -113,10 +113,10 @@ body {
   height: 10px;
 }
 ::-webkit-scrollbar-track {
-  background: #040110;
+  background: #efe9dd;
 }
 ::-webkit-scrollbar-thumb {
-  background: linear-gradient(180deg, #2dd4bf, #e879f9);
+  background: #c9c2b2;
   border-radius: 8px;
 }
 
@@ -201,3 +201,56 @@ body {
   -webkit-text-stroke: 1px rgba(244, 242, 255, 0.35);
   color: transparent;
 }
+
+/* ---- Photographer Studio (admin) surfaces -------------------------------
+   Solid, hand-finished styling for the studio pages: white panels with a
+   hairline border and a whisper of shadow, plain fields, quiet buttons.
+   No glass, no glow, no gradients. Light theme only. */
+.panel {
+  background: #ffffff;
+  border: 1px solid rgba(23, 18, 46, 0.1);
+  border-radius: 10px;
+  box-shadow: 0 1px 2px rgba(23, 18, 46, 0.05);
+}
+.panel-inset {
+  background: #faf7f0;
+  border: 1px solid rgba(23, 18, 46, 0.09);
+  border-radius: 8px;
+}
+.field {
+  background: #ffffff;
+  border: 1px solid rgba(23, 18, 46, 0.18);
+  border-radius: 8px;
+  color: #17122e;
+}
+.field:focus {
+  border-color: #0e7490;
+  outline: 2px solid rgba(14, 116, 144, 0.22);
+}
+.btn-solid {
+  background: #0e7490;
+  color: #ffffff;
+  font-weight: 600;
+  border-radius: 8px;
+  transition: background 0.15s ease;
+}
+.btn-solid:hover { background: #155e75; }
+.btn-solid:disabled { opacity: 0.5; }
+.btn-outline {
+  background: #ffffff;
+  border: 1px solid rgba(23, 18, 46, 0.2);
+  border-radius: 8px;
+  font-weight: 500;
+  color: #17122e;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.btn-outline:hover { border-color: rgba(23, 18, 46, 0.45); }
+.btn-danger {
+  background: #fef2f2;
+  color: #b91c1c;
+  border: 1px solid rgba(185, 28, 28, 0.35);
+  border-radius: 8px;
+  font-weight: 600;
+  transition: background 0.15s ease;
+}
+.btn-danger:hover { background: #fee2e2; }

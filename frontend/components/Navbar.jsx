@@ -44,7 +44,7 @@ export default function Navbar() {
               </span>
               <button
                 onClick={handleLogout}
-                className="btn-ghost rounded-xl px-4 py-1.5 text-sm font-medium"
+                className="btn-outline px-4 py-1.5 text-sm"
               >
                 Logout
               </button>
@@ -52,7 +52,7 @@ export default function Navbar() {
           ) : (
             <Link
               href="/login"
-              className="btn-bio rounded-xl px-5 py-1.5 text-sm"
+              className="btn-solid px-5 py-1.5 text-sm"
             >
               Login
             </Link>

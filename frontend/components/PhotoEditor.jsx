@@ -55,24 +55,24 @@ export default function PhotoEditor({ photo, onClose, onSave, saving }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
-      <div className="glass-deep w-full max-w-2xl rounded-2xl p-6">
+      <div className="panel w-full max-w-2xl p-6">
         <div className="flex items-center justify-between">
-          <h3 className="font-semibold text-white">Edit photo</h3>
+          <h3 className="font-semibold text-ink">Edit photo</h3>
           <button
             onClick={onClose}
-            className="rounded-lg px-2 py-1 text-zinc-400 hover:bg-white/10 hover:text-white"
+            className="rounded-md px-2 py-1 text-inkdim transition hover:bg-[#17122e]/5 hover:text-ink"
           >
             ✕
           </button>
         </div>
 
-        <div className="mt-4 flex max-h-[55vh] items-center justify-center overflow-hidden rounded-xl bg-black/50">
+        <div className="mt-4 flex max-h-[55vh] items-center justify-center overflow-hidden rounded-lg bg-[#17122e]/[0.04]">
           {loadError ? (
             <p className="p-8 text-sm text-red-300">
               Couldn&apos;t load the image for editing.
             </p>
           ) : !img ? (
-            <p className="p-8 text-sm text-zinc-400">Loading…</p>
+            <p className="p-8 text-sm text-inkdim">Loading…</p>
           ) : (
             <canvas ref={canvasRef} className="max-h-[55vh] max-w-full" />
           )}
@@ -82,22 +82,22 @@ export default function PhotoEditor({ photo, onClose, onSave, saving }) {
           <button
             onClick={() => setRotation((r) => r - 90)}
             disabled={!img}
-            className="rounded-xl bg-white/10 px-4 py-2 text-sm font-medium text-zinc-200 hover:bg-white/15 disabled:opacity-40"
+            className="btn-outline px-4 py-2 text-sm"
           >
             ⟲ Rotate left
           </button>
           <button
             onClick={() => setRotation((r) => r + 90)}
             disabled={!img}
-            className="rounded-xl bg-white/10 px-4 py-2 text-sm font-medium text-zinc-200 hover:bg-white/15 disabled:opacity-40"
+            className="btn-outline px-4 py-2 text-sm"
           >
             ⟳ Rotate right
           </button>
           <button
             onClick={() => setFlipH((f) => !f)}
             disabled={!img}
-            className={`rounded-xl px-4 py-2 text-sm font-medium hover:bg-white/15 disabled:opacity-40 ${
-              flipH ? "bg-bio-teal/25 text-bio-cyan" : "bg-white/10 text-inkdim"
+            className={`rounded-lg border px-4 py-2 text-sm font-medium transition disabled:opacity-40 ${
+              flipH ? "border-[#0e7490]/50 bg-[#0e7490]/[0.07] text-[#0e7490]" : "border-[#17122e]/20 bg-white text-inkdim hover:border-[#17122e]/45"
             }`}
           >
             ⇄ Flip
@@ -108,7 +108,7 @@ export default function PhotoEditor({ photo, onClose, onSave, saving }) {
               setFlipH(false);
             }}
             disabled={!dirty}
-            className="rounded-xl px-3 py-2 text-sm text-zinc-400 hover:text-white disabled:opacity-40"
+            className="rounded-lg px-3 py-2 text-sm text-inkdim transition hover:text-ink disabled:opacity-40"
           >
             Reset
           </button>
@@ -117,19 +117,19 @@ export default function PhotoEditor({ photo, onClose, onSave, saving }) {
         <div className="mt-4 flex justify-end gap-2">
           <button
             onClick={onClose}
-            className="rounded-xl px-4 py-2 text-sm text-zinc-400 hover:text-white"
+            className="rounded-lg px-4 py-2 text-sm text-inkdim transition hover:text-ink"
           >
             Cancel
           </button>
           <button
             onClick={handleSave}
             disabled={!dirty || saving}
-            className="btn-bio rounded-xl px-6 py-2 text-sm disabled:opacity-40"
+            className="btn-solid px-6 py-2 text-sm"
           >
             {saving ? "Saving…" : "Save changes"}
           </button>
         </div>
-        <p className="mt-2 text-xs text-zinc-500">
+        <p className="mt-2 text-xs text-inkdim">
           Saving replaces the photo and re-scans it for faces.
         </p>
       </div>
