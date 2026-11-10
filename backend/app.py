@@ -183,15 +183,50 @@ def gallery_payload(gallery: CoupleGallery) -> dict:
     }
 
 
+def _ensure_wm_variant(obj) -> str:
+    """Return the watermark colour for a Cloudinary-backed photo row.
+
+    New uploads store the variant at upload time. Older rows have NULL:
+    compute it once from the stored image, persist it, and reuse it from
+    then on. If the computation fails (network, decode), serve the white
+    logo for this request without persisting, and retry next time.
+    """
+    if getattr(obj, "wm_variant", None):
+        return obj.wm_variant
+    if not getattr(obj, "cloudinary_public_id", None):
+        return "white"
+    try:
+        variant = gallery_cloudinary.variant_for_public_id(obj.cloudinary_public_id)
+        obj.wm_variant = variant
+        db.session.commit()
+        return variant
+    except Exception:
+        db.session.rollback()
+        return "white"
+
+
 def gallery_media_payload(item: GalleryMedia) -> dict:
     url = item.cloudinary_url
     if gallery_cloudinary._cloud_name():
-        display_url = gallery_cloudinary.display_url(
-            item.cloudinary_public_id, item.media_type or "photo"
-        )
-        download_url = gallery_cloudinary.download_url(
-            item.cloudinary_public_id, item.media_type or "photo"
-        )
+        media_type = item.media_type or "photo"
+        if media_type == "photo":
+            # Photos are delivered watermarked (DKNOTT logo, top-left);
+            # the clean original URL is never exposed.
+            variant = _ensure_wm_variant(item)
+            url = gallery_cloudinary.full_url(item.cloudinary_public_id, variant)
+            display_url = gallery_cloudinary.display_url(
+                item.cloudinary_public_id, media_type, variant
+            )
+            download_url = gallery_cloudinary.download_url(
+                item.cloudinary_public_id, media_type, variant
+            )
+        else:
+            display_url = gallery_cloudinary.display_url(
+                item.cloudinary_public_id, media_type
+            )
+            download_url = gallery_cloudinary.download_url(
+                item.cloudinary_public_id, media_type
+            )
     else:
         display_url = download_url = url
     return {
@@ -229,9 +264,12 @@ def _cloudinary_ready() -> bool:
 def photo_payload(photo: Photo, distance=None) -> dict:
     be = _public_base()
     if photo.cloudinary_public_id:
-        url = photo.cloudinary_url
-        display_url = gallery_cloudinary.display_url(photo.cloudinary_public_id, "photo")
-        download_url = gallery_cloudinary.download_url(photo.cloudinary_public_id, "photo")
+        # Delivered watermarked (DKNOTT logo, top-left, colour picked per
+        # photo); the clean original URL is never exposed.
+        variant = _ensure_wm_variant(photo)
+        url = gallery_cloudinary.full_url(photo.cloudinary_public_id, variant)
+        display_url = gallery_cloudinary.display_url(photo.cloudinary_public_id, "photo", variant)
+        download_url = gallery_cloudinary.download_url(photo.cloudinary_public_id, "photo", variant)
         payload_url_fields = {"url": url, "display_url": display_url, "download_url": download_url}
     else:
         url = f"{be}/static/{photo.rel_path}"
@@ -509,11 +547,14 @@ def upload_event_photos(event_id):
             raw_descriptors[idx] if idx < len(raw_descriptors) else []
         )
 
-        cloud_url = cloud_pid = None
+        cloud_url = cloud_pid = wm_variant = None
         rel_path = ""
         if use_cloud:
             # Permanent storage: the file goes to Cloudinary; only its
             # URL/public_id are kept in the database row.
+            f.stream.seek(0)
+            # Watermark colour from the photo's own top-left corner.
+            wm_variant = gallery_cloudinary.corner_variant(f.stream.read())
             f.stream.seek(0)
             try:
                 up = gallery_cloudinary.upload_media(f, "photo", folder, preset)
@@ -532,6 +573,7 @@ def upload_event_photos(event_id):
             rel_path=rel_path,
             cloudinary_url=cloud_url,
             cloudinary_public_id=cloud_pid,
+            wm_variant=wm_variant,
             face_embeddings=json.dumps(embeddings),
             faces_detected=len(embeddings),
         )
@@ -673,6 +715,12 @@ def upload_gallery_media(gallery_id):
                 "(photos: png/jpg/jpeg/webp/gif; videos: mp4/mov/webm/m4v)."
             )
             continue
+        wm_variant = None
+        if media_type == "photo":
+            # Watermark colour from the photo's own top-left corner.
+            f.stream.seek(0)
+            wm_variant = gallery_cloudinary.corner_variant(f.stream.read())
+            f.stream.seek(0)
         try:
             up = gallery_cloudinary.upload_media(f, media_type, folder, preset)
         except GalleryStorageError as exc:
@@ -684,6 +732,7 @@ def upload_gallery_media(gallery_id):
             media_type=media_type,
             cloudinary_url=up["url"],
             cloudinary_public_id=up["public_id"],
+            wm_variant=wm_variant,
         )
         db.session.add(item)
         db.session.flush()
@@ -777,6 +826,8 @@ def edit_photo_admin(photo_id):
         # row at it (unsigned presets can't overwrite in place).
         folder = f"{app.config['CLOUDINARY_FOLDER']}/events/{photo.event.slug}"
         f.stream.seek(0)
+        wm_variant = gallery_cloudinary.corner_variant(f.stream.read())
+        f.stream.seek(0)
         try:
             up = gallery_cloudinary.upload_media(
                 f, "photo", folder, app.config["CLOUDINARY_UPLOAD_PRESET"]
@@ -785,6 +836,7 @@ def edit_photo_admin(photo_id):
             return jsonify({"error": str(exc)}), 502
         photo.cloudinary_url = up["url"]
         photo.cloudinary_public_id = up["public_id"]
+        photo.wm_variant = wm_variant
     else:
         abs_path = os.path.join(app.config["STATIC_DIR"], photo.rel_path)
         f.save(abs_path)  # overwrite in place
@@ -956,7 +1008,9 @@ def download_photo(photo_id):
         return jsonify({"error": "This photo is not in your matches."}), 403
     if photo.cloudinary_public_id:
         return redirect(
-            gallery_cloudinary.download_url(photo.cloudinary_public_id, "photo")
+            gallery_cloudinary.download_url(
+                photo.cloudinary_public_id, "photo", _ensure_wm_variant(photo)
+            )
         )
     directory = os.path.join(app.config["STATIC_DIR"], os.path.dirname(photo.rel_path))
     return send_from_directory(directory, os.path.basename(photo.rel_path), as_attachment=True)
@@ -1019,6 +1073,10 @@ with app.app_context():
             # All-photos-on-Cloudinary (2026-11-06): guest selfies can live
             # on Cloudinary too, not just on local disk.
             "ALTER TABLE users ADD COLUMN selfie_cloudinary_url VARCHAR(700)",
+            # Watermark (2026-11-10): per-photo logo colour for the
+            # DKNOTT watermark overlay on delivered copies.
+            "ALTER TABLE photos ADD COLUMN wm_variant VARCHAR(10)",
+            "ALTER TABLE gallery_media ADD COLUMN wm_variant VARCHAR(10)",
         ):
             try:
                 db.session.execute(_sa_text(_ddl))

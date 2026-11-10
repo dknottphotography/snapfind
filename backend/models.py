@@ -76,6 +76,9 @@ class Photo(db.Model):
     # instead of on local disk; rel_path then stays "" and these are set.
     cloudinary_url = db.Column(db.String(700), nullable=True)
     cloudinary_public_id = db.Column(db.String(400), nullable=True)
+    # Watermark colour chosen for this photo ('white' | 'black' | NULL =
+    # not computed yet). See gallery_cloudinary.WATERMARK_LOGOS.
+    wm_variant = db.Column(db.String(10), nullable=True)
     # JSON: list of ArcFace embedding vectors (one per detected face)
     face_embeddings = db.Column(db.Text, nullable=False, default="[]")
     faces_detected = db.Column(db.Integer, nullable=False, default=0)
@@ -143,4 +146,7 @@ class GalleryMedia(db.Model):
     media_type = db.Column(db.String(10), nullable=False, default="photo")
     cloudinary_url = db.Column(db.String(500), nullable=False)
     cloudinary_public_id = db.Column(db.String(255), nullable=True)
+    # Watermark colour for photos ('white' | 'black' | NULL = not yet
+    # computed). Videos are not watermarked.
+    wm_variant = db.Column(db.String(10), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)

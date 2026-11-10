@@ -94,26 +94,116 @@ def delete_media(public_id: str, media_type: str) -> bool:
         return False
 
 
-def display_url(public_id: str, media_type: str) -> str:
+# ------------------------------------------------------------- watermark
+# Small DKNOTT logo in the top-left corner of every delivered photo
+# (approved by the owner 2026-11-10). Two transparent variants of the logo
+# live in this same cloud; the backend picks per photo by the brightness
+# of the corner the logo will sit on: white logo on a dark corner, black
+# logo on a bright one. The stored originals are never modified — the
+# overlay exists only in delivery URLs.
+WATERMARK_LOGOS = {
+    "white": "snapfind:branding:dknott-logo-white",
+    "black": "snapfind:branding:dknott-logo-black",
+}
+# Mean luminance (0-255) of the top-left corner at/above which the black
+# logo reads better than the white one.
+WATERMARK_BRIGHT_THRESHOLD = 150
+
+
+def _watermark_steps(variant: str) -> list:
+    """Overlay transformation steps for one watermark variant (or none)."""
+    logo = WATERMARK_LOGOS.get(variant or "")
+    if not logo:
+        return []
+    return [
+        {"overlay": logo, "width": 0.09, "flags": "relative", "opacity": 85},
+        {"flags": "layer_apply", "gravity": "north_west", "x": 18, "y": 18},
+    ]
+
+
+def corner_variant(image_bytes: bytes) -> str:
+    """Pick the watermark colour for a photo from its raw bytes.
+
+    Looks at the top-left patch where the logo will sit and returns
+    "black" when that patch is bright, "white" when it is dark.
+    Falls back to "white" if the bytes cannot be decoded.
+    """
+    try:
+        import io
+
+        from PIL import Image
+
+        img = Image.open(io.BytesIO(image_bytes)).convert("L")
+        w, h = img.size
+        side = max(8, int(w * 0.16))
+        patch = img.crop((0, 0, min(w, side), min(h, side))).resize((24, 24))
+        mean = sum(patch.getdata()) / (24 * 24)
+        return "black" if mean >= WATERMARK_BRIGHT_THRESHOLD else "white"
+    except Exception:
+        return "white"
+
+
+def variant_for_public_id(public_id: str) -> str:
+    """Pick the watermark colour for an already-uploaded photo.
+
+    Fetches a tiny derivative of the stored image and inspects its
+    corner. Raises on network/decode failure so the caller can leave
+    the photo's stored variant unset and retry later.
+    """
+    import urllib.request
+
+    url, _ = cloudinary.utils.cloudinary_url(
+        public_id, resource_type="image", format="jpg", secure=True,
+        transformation=[{"width": 200, "crop": "scale"}],
+    )
+    with urllib.request.urlopen(url, timeout=10) as resp:  # noqa: S310
+        data = resp.read()
+    variant = corner_variant(data)
+    # corner_variant swallows decode errors and answers "white"; make
+    # sure the bytes really were an image before trusting the answer.
+    import io
+
+    from PIL import Image
+
+    Image.open(io.BytesIO(data)).verify()
+    return variant
+
+
+def display_url(public_id: str, media_type: str, variant: str = None) -> str:
     """Grid-friendly URL: a resized image, or the video's first-frame poster."""
     if media_type == "video":
         url, _ = cloudinary.utils.cloudinary_url(
             public_id, resource_type="video", format="jpg", secure=True,
         )
         return url
+    steps = [{"width": 900, "height": 900, "crop": "limit"}]
+    steps += _watermark_steps(variant)
     url, _ = cloudinary.utils.cloudinary_url(
-        public_id, resource_type="image", secure=True,
-        transformation=[{"width": 900, "height": 900, "crop": "limit"}],
+        public_id, resource_type="image", secure=True, transformation=steps,
     )
     return url
 
 
-def download_url(public_id: str, media_type: str) -> str:
+def full_url(public_id: str, variant: str = None) -> str:
+    """Full-size image URL (lightbox / original view), watermarked."""
+    steps = _watermark_steps(variant)
+    kwargs = {"resource_type": "image", "secure": True}
+    if steps:
+        kwargs["transformation"] = steps
+    url, _ = cloudinary.utils.cloudinary_url(public_id, **kwargs)
+    return url
+
+
+def download_url(public_id: str, media_type: str, variant: str = None) -> str:
     """URL that forces a download (fl_attachment) instead of opening inline."""
-    url, _ = cloudinary.utils.cloudinary_url(
-        public_id,
-        resource_type="video" if media_type == "video" else "image",
-        flags="attachment",
-        secure=True,
-    )
+    kwargs = {
+        "resource_type": "video" if media_type == "video" else "image",
+        "flags": "attachment",
+        "secure": True,
+    }
+    if media_type != "video":
+        steps = _watermark_steps(variant)
+        if steps:
+            kwargs["transformation"] = steps
+    url, _ = cloudinary.utils.cloudinary_url(public_id, **kwargs)
     return url
