@@ -4,7 +4,6 @@ import { useRouter } from "next/router";
 import Navbar from "../components/Navbar";
 import UploadDropzone from "../components/UploadDropzone";
 import PhotoEditor from "../components/PhotoEditor";
-import AmbientAbyss from "../components/AmbientAbyss";
 import { IconCamera, IconImage, IconUsers, IconCheck, IconCopy, IconUpload, IconX, IconTrash, IconDownload, IconRefresh } from "../components/icons";
 import {
   getToken,
@@ -242,7 +241,7 @@ export default function AdminPage() {
       setPasscodeInput("");
       setPasscodeNote(
         data.has_passcode
-          ? "Passcode saved — share the link below with the couple."
+          ? "Passcode saved — send it to the couple in a separate message from the link."
           : "Passcode removed — the gallery stays locked until a new one is set."
       );
     } catch (err) {
@@ -567,7 +566,7 @@ export default function AdminPage() {
           </p>
           <button
             onClick={() => router.push("/gallery")}
-            className="btn-solid mt-6 px-6 py-2.5 text-sm"
+            className="btn-teal mt-6 px-6 py-2.5 text-sm"
           >
             Go to My Gallery
           </button>
@@ -581,24 +580,23 @@ export default function AdminPage() {
       <Head>
         <title>Photographer Studio — SnapFind</title>
       </Head>
-      <div className="min-h-screen bg-abyss text-ink">
-        <AmbientAbyss />
+      <div className="min-h-screen bg-[#EDF2EE] text-ink">
         <Navbar />
 
-        <main className="relative z-10 mx-auto max-w-7xl px-4 py-8 sm:px-6">
+        <main className="relative z-10 mx-auto max-w-6xl px-4 py-10 sm:px-6">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-[28px] font-bold tracking-tight">Photographer Studio</h1>
-              <p className="mt-1 text-sm text-inkdim">
-                Signed in as {me?.name} — create events, upload photos, share QR codes.
+              <h1 className="text-[32px] font-bold tracking-tight">Photographer Studio</h1>
+              <p className="mt-1.5 text-sm text-inkdim">
+                Signed in as {me?.name}. Create events, upload photos and share QR codes.
               </p>
             </div>
           </div>
 
           <div className="mt-8 flex gap-7 border-b border-[#17122e]/10">
             {[
-              { id: "photos", label: "Photos & Events" },
-              { id: "gallery", label: "Couple's Gallery" },
+              { id: "photos", label: "Photos & events" },
+              { id: "gallery", label: "Couple's galleries" },
               { id: "users", label: "Users" },
             ].map((t) => (
               <button
@@ -606,7 +604,7 @@ export default function AdminPage() {
                 onClick={() => setTab(t.id)}
                 className={`-mb-px border-b-2 px-0.5 pb-3 text-sm transition ${
                   tab === t.id
-                    ? "border-[#0e7490] font-semibold text-ink"
+                    ? "border-[#0D9488] font-semibold text-ink"
                     : "border-transparent font-medium text-inkdim hover:text-ink"
                 }`}
               >
@@ -638,7 +636,7 @@ export default function AdminPage() {
                   <button
                     type="submit"
                     disabled={creating || !newName.trim()}
-                    className="btn-solid px-4 py-2.5 text-sm"
+                    className="btn-teal px-4 py-2.5 text-sm"
                   >
                     {creating ? "…" : "Create"}
                   </button>
@@ -852,254 +850,334 @@ export default function AdminPage() {
           )}
 
           {tab === "gallery" && (
-          <div className="mt-6 space-y-6">
-            <div className="panel p-6">
-              <h2 className="font-semibold">Couple&apos;s Gallery</h2>
-              <p className="mt-1 text-sm text-inkdim">
-                A private gallery for the couple, protected by a passcode and
-                kept fully separate from your events. Create it with the
-                couple&apos;s name, add their photos and videos (stored
-                permanently on Cloudinary), set a passcode, then share the
-                link or QR code with the couple.
-              </p>
+          <div className="mt-8 grid items-start gap-8 lg:grid-cols-[250px_1fr]">
+            {/* ------- LEFT RAIL: gallery list + create ------- */}
+            <div>
+              <p className="text-[13px] font-semibold text-ink">Your galleries</p>
+              <div className="mt-3 space-y-1">
+                {galleries.length === 0 && (
+                  <p className="text-sm leading-relaxed text-inkdim">
+                    No galleries yet. Create the first one below — all it
+                    needs is the couple&apos;s name.
+                  </p>
+                )}
+                {galleries.map((g) => (
+                  <button
+                    key={g.id}
+                    onClick={() => setSelectedGalleryId(g.id)}
+                    className={`flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2.5 text-left text-sm transition ${
+                      g.id === selectedGalleryId
+                        ? "border-l-[3px] border-[#0D9488] bg-white font-semibold text-ink shadow-[0_1px_2px_rgba(23,18,46,0.07)]"
+                        : "border-l-[3px] border-transparent text-inkdim hover:bg-white/70 hover:text-ink"
+                    }`}
+                  >
+                    <span className="min-w-0 truncate">{g.name}</span>
+                    <span className="shrink-0 text-xs font-normal text-inkdim">
+                      {g.media_count ?? 0} file{(g.media_count ?? 0) === 1 ? "" : "s"}
+                    </span>
+                  </button>
+                ))}
+              </div>
               <form onSubmit={handleCreateGallery} className="mt-4 flex gap-2">
                 <input
                   value={newGalleryName}
                   onChange={(e) => setNewGalleryName(e.target.value)}
-                  placeholder="Couple's name, e.g. Ananya & Rohan"
-                  className="field min-w-0 flex-1 px-3.5 py-2.5 text-sm"
+                  placeholder="Ananya & Rohan"
+                  className="field min-w-0 flex-1 px-3 py-2.5 text-sm"
                 />
                 <button
                   type="submit"
                   disabled={galleryCreating || !newGalleryName.trim()}
-                  className="btn-solid shrink-0 px-4 py-2.5 text-sm"
+                  className="btn-teal shrink-0 px-4 py-2.5 text-sm"
                 >
-                  {galleryCreating ? "Creating…" : "Create gallery"}
+                  {galleryCreating ? "…" : "Create"}
                 </button>
               </form>
-              {galleries.length > 0 && (
-                <select
-                  value={selectedGalleryId || ""}
-                  onChange={(e) => setSelectedGalleryId(Number(e.target.value))}
-                  className="field mt-4 w-full px-3.5 py-2.5 text-sm"
-                >
-                  {galleries.map((g) => (
-                    <option key={g.id} value={g.id}>
-                      {g.name}
-                    </option>
-                  ))}
-                </select>
-              )}
+              <p className="mt-3 text-xs leading-relaxed text-inkdim">
+                A private, passcode-protected gallery for the couple — kept
+                fully separate from your events. Files are stored permanently
+                on Cloudinary.
+              </p>
             </div>
 
-            {selectedGallery && (
-              <>
-                {/* passcode + share link + QR */}
-                <div className="panel p-6">
-                  <h2 className="font-semibold">Passcode, link &amp; QR</h2>
-                  <p className="mt-1 text-sm text-inkdim">
-                    {selectedGallery.has_passcode
-                      ? "A passcode is set for this gallery. Change it below — the old one stops working immediately."
-                      : "No passcode set yet — the gallery stays locked until you set one."}
+            {/* ------- RIGHT: ticket card + media + danger ------- */}
+            <div className="min-w-0">
+              {!selectedGallery && (
+                <div className="panel p-8 text-center">
+                  <p className="text-sm text-inkdim">
+                    {galleries.length === 0
+                      ? "Create a gallery to get its share link and QR code."
+                      : "Select a gallery from the list to manage its link, passcode and photos."}
                   </p>
-                  <form onSubmit={handleSavePasscode} className="mt-3 flex gap-2">
-                    <input
-                      value={passcodeInput}
-                      onChange={(e) => setPasscodeInput(e.target.value)}
-                      placeholder="e.g. ananya-2026"
-                      autoComplete="off"
-                      className="field min-w-0 flex-1 px-3.5 py-2.5 text-sm"
-                    />
-                    <button
-                      type="submit"
-                      disabled={passcodeSaving || !passcodeInput.trim()}
-                      className="btn-solid px-4 py-2.5 text-sm"
-                    >
-                      {passcodeSaving ? "…" : "Set passcode"}
-                    </button>
-                  </form>
-                  {passcodeNote && (
-                    <p className="mt-2 text-sm text-emerald-700">{passcodeNote}</p>
-                  )}
-                  {selectedGallery.gallery_url && (
-                    <div className="panel-inset mt-4 p-4">
-                      <p className="text-xs uppercase tracking-wide text-inkdim">
-                        Share this link with the couple
-                      </p>
-                      <p className="mt-1 break-all text-sm font-medium text-[#0e7490]">
-                        {selectedGallery.gallery_url}
-                      </p>
-                      <button
-                        onClick={() => copyGalleryLink(selectedGallery.gallery_url)}
-                        className="btn-outline mt-2 w-full py-2 text-sm"
-                      >
-                        {galleryCopied ? (
-                          <span className="inline-flex items-center gap-1.5"><IconCheck size={14} /> Copied!</span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1.5"><IconCopy size={14} /> Copy gallery link</span>
-                        )}
-                      </button>
-                      <div className="mt-4 flex flex-col items-center gap-2">
-                        <img
-                          src={galleryQrUrl(selectedGallery.slug)}
-                          alt={`QR code for ${selectedGallery.name} gallery`}
-                          className="h-44 w-44 rounded-xl bg-white p-2"
-                          loading="lazy"
-                        />
-                        <a
-                          href={galleryQrUrl(selectedGallery.slug)}
-                          download={`${selectedGallery.slug}-gallery-qr.png`}
-                          className="btn-outline inline-flex items-center gap-1.5 px-4 py-2 text-sm"
-                        >
-                          <IconDownload size={14} /> Download QR to share
-                        </a>
-                        <p className="text-center text-xs text-inkdim">
-                          The couple can scan this QR instead of opening the link.
-                          Send the passcode separately — the link and QR alone open nothing.
-                        </p>
-                      </div>
-                    </div>
-                  )}
                 </div>
+              )}
 
-                {/* upload */}
-                <div className="panel p-6">
-                  <h2 className="font-semibold">Upload photos &amp; videos</h2>
-                  <p className="mt-1 text-sm text-inkdim">
-                    Files go to Cloudinary (permanent storage). Keep each video
-                    under 100 MB.
-                  </p>
-                  <div className="mt-4">
-                    <UploadDropzone
-                      onFiles={handleGalleryFiles}
-                      accept="image/*,video/*"
-                      label={galleryUploading ? "Uploading…" : "Drop photos & videos here or click to browse"}
-                      hint="Photos: PNG, JPG, JPEG, WEBP, GIF · Videos: MP4, MOV, WEBM, M4V"
-                    />
-                    {galleryUploading && galleryProgress && (() => {
-                      const p = galleryProgress;
-                      const frac = p.total > 0 ? (p.done + (p.fileTotal > 0 ? p.loaded / p.fileTotal : 0)) / p.total : 0;
-                      const pct = Math.min(100, Math.round(frac * 100));
-                      return (
-                        <div className="panel-inset mt-4 p-4">
-                          <div className="flex items-baseline justify-between gap-2">
-                            <p className="text-sm font-semibold text-ink">
-                              {p.done} of {p.total} files uploaded
+              {selectedGallery && (
+                <>
+                  {/* ticket card */}
+                  <div className="flex flex-col overflow-visible rounded-2xl bg-[#0B3B34] shadow-[0_2px_10px_rgba(11,59,52,0.25)] sm:flex-row">
+                    <div className="min-w-0 flex-1 p-6 sm:p-7">
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+                        <h2 className="text-[26px] font-bold leading-tight text-[#F5FAF7]">
+                          {selectedGallery.name}
+                        </h2>
+                      </div>
+                      <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5">
+                        {selectedGallery.has_passcode ? (
+                          <span className="rounded-full bg-[rgba(255,255,255,0.14)] px-2.5 py-0.5 text-xs font-semibold text-[#A9E5CB]">
+                            Passcode set
+                          </span>
+                        ) : (
+                          <span className="rounded-full bg-[rgba(251,191,36,0.18)] px-2.5 py-0.5 text-xs font-semibold text-[#FCD34D]">
+                            No passcode yet
+                          </span>
+                        )}
+                        <span className="text-[13px] text-[rgba(255,255,255,0.6)]">
+                          {galleryMedia.length} file{galleryMedia.length === 1 ? "" : "s"} on Cloudinary
+                        </span>
+                      </div>
+
+                      {selectedGallery.gallery_url && (
+                        <>
+                          <p className="mt-6 text-[13px] font-medium text-[rgba(255,255,255,0.6)]">
+                            Gallery link
+                          </p>
+                          <div className="mt-1.5 flex gap-2">
+                            <p className="min-w-0 flex-1 truncate rounded-lg bg-[rgba(0,0,0,0.3)] px-3.5 py-2.5 text-sm text-[#EAF4EF]">
+                              {selectedGallery.gallery_url}
                             </p>
-                            <p className="text-sm font-bold text-[#0e7490]">{pct}%</p>
-                          </div>
-                          <div className="mt-3 h-2.5 overflow-hidden rounded-full bg-[#17122e]/10">
-                            <div
-                              className="h-full rounded-full transition-[width] duration-300 ease-out"
-                              style={{
-                                width: `${pct}%`,
-                                backgroundImage:
-                                  "linear-gradient(45deg, rgba(255,255,255,.25) 25%, transparent 25%, transparent 50%, rgba(255,255,255,.25) 50%, rgba(255,255,255,.25) 75%, transparent 75%)",
-                                backgroundColor: "#2dd4bf",
-                                backgroundSize: "40px 40px",
-                                animation: "snapfind-stripes 0.8s linear infinite",
-                              }}
-                            />
-                          </div>
-                          {p.fileName && (
-                            <p className="mt-2 truncate text-center text-xs text-inkdim">
-                              Uploading: {p.fileName}
-                            </p>
-                          )}
-                          <div className="mt-3 flex justify-center">
                             <button
-                              type="button"
-                              onClick={cancelGalleryUpload}
-                              className="btn-danger px-5 py-2 text-sm"
+                              onClick={() => copyGalleryLink(selectedGallery.gallery_url)}
+                              className="shrink-0 rounded-lg border border-[rgba(255,255,255,0.3)] px-4 py-2.5 text-sm font-medium text-[#F5FAF7] transition hover:border-[rgba(255,255,255,0.55)]"
                             >
-                              Cancel upload
+                              {galleryCopied ? "Copied" : "Copy"}
                             </button>
                           </div>
+                          <div className="mt-4 flex flex-wrap gap-2.5">
+                            <a
+                              href={`https://wa.me/?text=${encodeURIComponent(`Hi! Your private photo gallery is ready: ${selectedGallery.gallery_url}`)}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="rounded-lg bg-[#C4EBDA] px-4 py-2.5 text-sm font-semibold text-[#0B3B34] transition hover:bg-[#AEE2CC]"
+                            >
+                              Send on WhatsApp
+                            </a>
+                            <a
+                              href={selectedGallery.gallery_url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="rounded-lg border border-[rgba(255,255,255,0.3)] px-4 py-2.5 text-sm font-medium text-[#F5FAF7] transition hover:border-[rgba(255,255,255,0.55)]"
+                            >
+                              Preview as couple
+                            </a>
+                          </div>
+                        </>
+                      )}
+
+                      <form onSubmit={handleSavePasscode} className="mt-6">
+                        <label
+                          htmlFor="gallery-passcode"
+                          className="text-[13px] font-medium text-[rgba(255,255,255,0.65)]"
+                        >
+                          Passcode (changing it signs the couple out immediately)
+                        </label>
+                        <div className="mt-1.5 flex gap-2">
+                          <input
+                            id="gallery-passcode"
+                            value={passcodeInput}
+                            onChange={(e) => setPasscodeInput(e.target.value)}
+                            placeholder="Enter a new passcode"
+                            autoComplete="off"
+                            className="min-w-0 flex-1 rounded-lg border border-[rgba(255,255,255,0.25)] bg-transparent px-3.5 py-2.5 text-sm text-[#F5FAF7] outline-none transition placeholder:text-[rgba(255,255,255,0.4)] focus:border-[rgba(255,255,255,0.55)]"
+                          />
+                          <button
+                            type="submit"
+                            disabled={passcodeSaving || !passcodeInput.trim()}
+                            className="shrink-0 rounded-lg bg-[#C4EBDA] px-4 py-2.5 text-sm font-semibold text-[#0B3B34] transition hover:bg-[#AEE2CC] disabled:opacity-50"
+                          >
+                            {passcodeSaving ? "…" : "Change"}
+                          </button>
                         </div>
-                      );
-                    })()}
-                    {!galleryUploading && galleryNote && (
-                      <p className="mt-2 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-center text-sm text-emerald-800">
-                        {galleryNote}
+                        {passcodeNote ? (
+                          <p className="mt-2 text-[13px] text-[#9ADBBE]">{passcodeNote}</p>
+                        ) : (
+                          <p className="mt-2 text-[13px] text-[rgba(255,255,255,0.55)]">
+                            {selectedGallery.has_passcode
+                              ? "Current passcode: ••••. Send it in a different message from the link."
+                              : "No passcode yet — the gallery stays locked until you set one."}
+                          </p>
+                        )}
+                      </form>
+                    </div>
+
+                    {/* QR stub */}
+                    <div className="relative flex flex-col items-center border-t border-dashed border-[rgba(255,255,255,0.25)] px-6 py-6 sm:w-[248px] sm:shrink-0 sm:border-l sm:border-t-0 sm:py-7">
+                      <span className="absolute -top-3 left-1/2 hidden h-6 w-6 -translate-x-1/2 rounded-full bg-[#EDF2EE] sm:block" />
+                      <span className="absolute -bottom-3 left-1/2 hidden h-6 w-6 -translate-x-1/2 rounded-full bg-[#EDF2EE] sm:block" />
+                      <span className="absolute -left-3 top-1/2 h-6 w-6 -translate-y-1/2 rounded-full bg-[#EDF2EE] sm:hidden" />
+                      <span className="absolute -right-3 top-1/2 h-6 w-6 -translate-y-1/2 rounded-full bg-[#EDF2EE] sm:hidden" />
+                      {selectedGallery.gallery_url ? (
+                        <>
+                          <img
+                            src={galleryQrUrl(selectedGallery.slug)}
+                            alt={`QR code for ${selectedGallery.name} gallery`}
+                            className="h-40 w-40 rounded-xl bg-white p-2"
+                            loading="lazy"
+                          />
+                          <a
+                            href={galleryQrUrl(selectedGallery.slug)}
+                            download={`${selectedGallery.slug}-gallery-qr.png`}
+                            className="mt-4 rounded-lg border border-[rgba(255,255,255,0.3)] px-4 py-2 text-sm font-medium text-[#F5FAF7] transition hover:border-[rgba(255,255,255,0.55)]"
+                          >
+                            Download QR
+                          </a>
+                          <p className="mt-3 text-center text-[13px] leading-relaxed text-[rgba(255,255,255,0.6)]">
+                            Couples can scan this instead of opening the link.
+                          </p>
+                        </>
+                      ) : (
+                        <p className="text-center text-[13px] text-[rgba(255,255,255,0.6)]">
+                          Set a passcode to activate the link and QR code.
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* photos & videos */}
+                  <div className="mt-10">
+                    <div className="flex items-baseline justify-between gap-3">
+                      <h2 className="text-xl font-bold tracking-tight text-ink">
+                        Photos &amp; videos
+                      </h2>
+                      <span className="text-sm text-inkdim">
+                        {galleryMedia.length} item{galleryMedia.length === 1 ? "" : "s"}
+                      </span>
+                    </div>
+                    <div className="mt-4">
+                      <UploadDropzone
+                        onFiles={handleGalleryFiles}
+                        accept="image/*,video/*"
+                        label={galleryUploading ? "Uploading…" : "Drop files here or click to browse"}
+                        hint="PNG, JPG, WEBP, GIF, or MP4, MOV, WEBM, M4V. Keep each video under 100 MB."
+                      />
+                      {galleryUploading && galleryProgress && (() => {
+                        const p = galleryProgress;
+                        const frac = p.total > 0 ? (p.done + (p.fileTotal > 0 ? p.loaded / p.fileTotal : 0)) / p.total : 0;
+                        const pct = Math.min(100, Math.round(frac * 100));
+                        return (
+                          <div className="panel-inset mt-4 p-4">
+                            <div className="flex items-baseline justify-between gap-2">
+                              <p className="text-sm font-semibold text-ink">
+                                {p.done} of {p.total} files uploaded
+                              </p>
+                              <p className="text-sm font-bold text-[#0F766E]">{pct}%</p>
+                            </div>
+                            <div className="mt-3 h-2.5 overflow-hidden rounded-full bg-[#17122e]/10">
+                              <div
+                                className="h-full rounded-full transition-[width] duration-300 ease-out"
+                                style={{
+                                  width: `${pct}%`,
+                                  backgroundImage:
+                                    "linear-gradient(45deg, rgba(255,255,255,.25) 25%, transparent 25%, transparent 50%, rgba(255,255,255,.25) 50%, rgba(255,255,255,.25) 75%, transparent 75%)",
+                                  backgroundColor: "#2dd4bf",
+                                  backgroundSize: "40px 40px",
+                                  animation: "snapfind-stripes 0.8s linear infinite",
+                                }}
+                              />
+                            </div>
+                            {p.fileName && (
+                              <p className="mt-2 truncate text-center text-xs text-inkdim">
+                                Uploading: {p.fileName}
+                              </p>
+                            )}
+                            <div className="mt-3 flex justify-center">
+                              <button
+                                type="button"
+                                onClick={cancelGalleryUpload}
+                                className="btn-danger px-5 py-2 text-sm"
+                              >
+                                Cancel upload
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })()}
+                      {!galleryUploading && galleryNote && (
+                        <p className="mt-2 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-center text-sm text-emerald-800">
+                          {galleryNote}
+                        </p>
+                      )}
+                    </div>
+
+                    {galleryLoading ? (
+                      <p className="py-10 text-center text-sm text-inkdim">Loading…</p>
+                    ) : galleryMedia.length === 0 ? (
+                      <p className="py-10 text-center text-sm text-inkdim">
+                        Nothing here yet — drop the couple&apos;s photos and videos above.
                       </p>
+                    ) : (
+                      <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3">
+                        {galleryMedia.map((m) => (
+                          <div
+                            key={m.id}
+                            className="group relative overflow-hidden rounded-xl ring-1 ring-[#17122e]/10"
+                          >
+                            {m.media_type === "video" ? (
+                              <video
+                                src={m.url}
+                                poster={m.display_url}
+                                preload="metadata"
+                                muted
+                                playsInline
+                                className="aspect-video w-full object-cover"
+                              />
+                            ) : (
+                              <img
+                                src={m.display_url || m.url}
+                                alt={m.filename}
+                                className="aspect-square w-full object-cover"
+                                loading="lazy"
+                              />
+                            )}
+                            <span className="absolute left-2 top-2 rounded-md bg-black/70 px-2 py-0.5 text-xs font-medium text-white">
+                              {m.media_type === "video" ? "Video" : "Photo"}
+                            </span>
+                            <button
+                              onClick={() => handleDeleteGalleryItem(m)}
+                              className="absolute right-2 top-2 rounded-md bg-black/70 px-2 py-1 text-xs font-medium text-white opacity-0 transition hover:bg-red-800 group-hover:opacity-100"
+                              title="Delete from gallery"
+                            >
+                              Delete
+                            </button>
+                            <p className="truncate bg-[#17122e]/85 px-2 py-1 text-[11px] text-white/75">
+                              {m.filename}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
                     )}
                   </div>
-                </div>
 
-                {/* media grid */}
-                <div className="panel p-6">
-                  <h2 className="font-semibold">
-                    Gallery media
-                    <span className="ml-2 text-sm font-normal text-inkdim">
-                      {galleryMedia.length} item{galleryMedia.length === 1 ? "" : "s"}
-                    </span>
-                  </h2>
-                  {galleryLoading ? (
-                    <p className="py-8 text-center text-sm text-inkdim">Loading…</p>
-                  ) : galleryMedia.length === 0 ? (
-                    <p className="py-8 text-center text-sm text-inkdim">
-                      No gallery media yet — upload some above.
-                    </p>
-                  ) : (
-                    <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
-                      {galleryMedia.map((m) => (
-                        <div
-                          key={m.id}
-                          className="group relative overflow-hidden rounded-lg ring-1 ring-[#17122e]/10"
-                        >
-                          {m.media_type === "video" ? (
-                            <video
-                              src={m.url}
-                              poster={m.display_url}
-                              preload="metadata"
-                              muted
-                              playsInline
-                              className="aspect-video w-full object-cover"
-                            />
-                          ) : (
-                            <img
-                              src={m.display_url || m.url}
-                              alt={m.filename}
-                              className="aspect-square w-full object-cover"
-                              loading="lazy"
-                            />
-                          )}
-                          <span className="absolute left-2 top-2 rounded-md bg-black/70 px-2 py-0.5 text-xs font-medium text-white">
-                            {m.media_type === "video" ? "Video" : "Photo"}
-                          </span>
-                          <button
-                            onClick={() => handleDeleteGalleryItem(m)}
-                            className="absolute right-2 top-2 rounded-md bg-black/70 px-2 py-1 text-xs font-medium text-white opacity-0 transition hover:bg-red-800 group-hover:opacity-100"
-                            title="Delete from gallery"
-                          >
-                            Delete
-                          </button>
-                          <p className="truncate bg-[#17122e]/85 px-2 py-1 text-[11px] text-white/75">
-                            {m.filename}
-                          </p>
-                        </div>
-                      ))}
+                  {/* danger zone */}
+                  <div className="mt-10 flex flex-wrap items-center justify-between gap-4 border-t border-[#17122e]/10 pt-6">
+                    <div className="min-w-0 max-w-xl">
+                      <h2 className="font-semibold text-ink">Delete this gallery</h2>
+                      <p className="mt-1 text-sm leading-relaxed text-inkdim">
+                        Removes the gallery, passcode and media list. The link
+                        and QR stop working. Your SnapFind events are not
+                        affected.
+                      </p>
                     </div>
-                  )}
-                </div>
-
-                {/* danger zone */}
-                <div className="panel p-6">
-                  <h2 className="font-semibold text-red-700">Delete this gallery</h2>
-                  <p className="mt-1 text-sm text-inkdim">
-                    Removes the gallery, its passcode and its media list. The
-                    couple&apos;s link and QR will stop working. This does not
-                    touch any SnapFind event.
-                  </p>
-                  <button
-                    onClick={handleDeleteGallery}
-                    className="btn-danger mt-3 px-5 py-2 text-sm"
-                  >
-                    Delete gallery
-                  </button>
-                </div>
-              </>
-            )}
+                    <button
+                      onClick={handleDeleteGallery}
+                      className="shrink-0 rounded-lg border border-[rgba(185,28,28,0.35)] bg-white px-5 py-2.5 text-sm font-semibold text-[#B91C1C] transition hover:bg-[#FEF2F2]"
+                    >
+                      Delete gallery
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
           )}
 

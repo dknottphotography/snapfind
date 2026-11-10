@@ -40,11 +40,11 @@ export default function UploadDropzone({
         }}
         className={`flex cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border border-dashed px-6 py-10 text-center transition ${
           dragOver
-            ? "border-[#0e7490] bg-[#0e7490]/[0.06]"
-            : "border-[#17122e]/25 bg-[#faf7f0] hover:border-[#0e7490]/50"
+            ? "border-[#0D9488] bg-[#0D9488]/[0.06]"
+            : "border-[#17122e]/25 bg-white hover:border-[#0D9488]/50"
         }`}
       >
-        <span className="text-[#0e7490]">
+        <span className="text-[#0D9488]">
           <IconUpload size={34} />
         </span>
         <p className="text-sm font-medium text-ink">{label}</p>

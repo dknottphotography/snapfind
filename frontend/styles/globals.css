@@ -254,3 +254,12 @@ body {
   transition: background 0.15s ease;
 }
 .btn-danger:hover { background: #fee2e2; }
+.btn-teal {
+  background: #0d9488;
+  color: #ffffff;
+  font-weight: 600;
+  border-radius: 8px;
+  transition: background 0.15s ease;
+}
+.btn-teal:hover { background: #0f766e; }
+.btn-teal:disabled { opacity: 0.5; }
