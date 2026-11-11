@@ -81,6 +81,7 @@ export default function CoupleGallery() {
   // Media
   const [unlocked, setUnlocked] = useState(false);
   const [media, setMedia] = useState([]);
+  const [folderFilter, setFolderFilter] = useState("All");
   const [mediaLoading, setMediaLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -194,6 +195,21 @@ export default function CoupleGallery() {
 
   const photos = media.filter((m) => m.media_type !== "video");
   const videos = media.filter((m) => m.media_type === "video");
+
+  // Folders (Haldi, Wedding, ...) organise the grid when the
+  // photographer used them at upload time.
+  const folderBuckets = [
+    ...new Set(media.map((m) => m.folder || "General")),
+  ];
+  const showFolderChips = media.some((m) => m.folder);
+  const activeFolder =
+    folderFilter === "All" || folderBuckets.includes(folderFilter)
+      ? folderFilter
+      : "All";
+  const visibleMedia =
+    activeFolder === "All"
+      ? media
+      : media.filter((m) => (m.folder || "General") === activeFolder);
 
   return (
     <>
@@ -373,8 +389,32 @@ export default function CoupleGallery() {
                       That is normal.
                     </p>
                   )}
+                  {showFolderChips && (
+                    <div className="mt-6 flex flex-wrap gap-2">
+                      {["All", ...folderBuckets].map((f) => (
+                        <button
+                          key={f}
+                          type="button"
+                          onClick={() => setFolderFilter(f)}
+                          className={`rounded-full px-4 py-1.5 text-xs font-semibold transition ${
+                            activeFolder === f
+                              ? "bg-[#211D18] text-white"
+                              : "bg-white text-[#5C5347] ring-1 ring-[#E7DFD2] hover:ring-[#211D18]"
+                          }`}
+                        >
+                          {f} (
+                          {f === "All"
+                            ? media.length
+                            : media.filter(
+                                (m) => (m.folder || "General") === f
+                              ).length}
+                          )
+                        </button>
+                      ))}
+                    </div>
+                  )}
                   <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-                    {media.map((item) => (
+                    {visibleMedia.map((item) => (
                       <button
                         key={item.id}
                         onClick={() => setViewer(item)}

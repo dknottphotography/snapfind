@@ -237,6 +237,7 @@ def gallery_media_payload(item: GalleryMedia) -> dict:
         "display_url": display_url,
         "download_url": download_url,
         "media_type": item.media_type or "photo",
+        "folder": item.folder or "",
         "created_at": item.created_at.isoformat() if item.created_at else None,
     }
 
@@ -700,7 +701,15 @@ def upload_gallery_media(gallery_id):
     if not files:
         return jsonify({"error": "No files received."}), 400
 
+    # Optional folder for this batch ('Haldi', 'Wedding', ...), chosen in
+    # the admin panel. Stored on each item and mirrored as a Cloudinary
+    # subfolder so the media library stays organised the same way.
+    folder_name = (request.form.get("folder") or "").strip()[:80]
     folder = f"{app.config['CLOUDINARY_FOLDER']}/galleries/{gallery.slug}"
+    if folder_name:
+        sub = re.sub(r"[^a-z0-9]+", "-", folder_name.lower()).strip("-")[:40]
+        if sub:
+            folder = f"{folder}/{sub}"
     saved, errors = [], []
     for f in files:
         ext = secure_filename(f.filename).rsplit(".", 1)[-1].lower() \
@@ -733,6 +742,7 @@ def upload_gallery_media(gallery_id):
             cloudinary_url=up["url"],
             cloudinary_public_id=up["public_id"],
             wm_variant=wm_variant,
+            folder=folder_name,
         )
         db.session.add(item)
         db.session.flush()
@@ -1077,6 +1087,9 @@ with app.app_context():
             # DKNOTT watermark overlay on delivered copies.
             "ALTER TABLE photos ADD COLUMN wm_variant VARCHAR(10)",
             "ALTER TABLE gallery_media ADD COLUMN wm_variant VARCHAR(10)",
+            # Gallery folders (2026-11-11): optional per-item folder
+            # ('Haldi', 'Wedding', ...) chosen at upload time.
+            "ALTER TABLE gallery_media ADD COLUMN folder VARCHAR(80)",
         ):
             try:
                 db.session.execute(_sa_text(_ddl))

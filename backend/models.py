@@ -149,4 +149,7 @@ class GalleryMedia(db.Model):
     # Watermark colour for photos ('white' | 'black' | NULL = not yet
     # computed). Videos are not watermarked.
     wm_variant = db.Column(db.String(10), nullable=True)
+    # Optional folder inside the gallery ('Haldi', 'Wedding', ...), chosen
+    # at upload time. ''/NULL = no folder (shown as "General").
+    folder = db.Column(db.String(80), nullable=True, default="")
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)

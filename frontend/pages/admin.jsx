@@ -66,6 +66,9 @@ export default function AdminPage() {
   const [passcodeSaving, setPasscodeSaving] = useState(false);
   const [passcodeNote, setPasscodeNote] = useState("");
   const [galleryCopied, setGalleryCopied] = useState(false);
+  const [galleryFolder, setGalleryFolder] = useState("General");
+  const [galleryFolderCustom, setGalleryFolderCustom] = useState("");
+  const [galleryFolderFilter, setGalleryFolderFilter] = useState("All");
   const galleryCancelRef = useRef(false);
   const galleryXhrRef = useRef(null);
   // Standalone galleries (separate from events): own list + own selection.
@@ -111,6 +114,39 @@ export default function AdminPage() {
   const selectedEvent = events.find((e) => e.id === selectedId) || null;
   const selectedGallery =
     galleries.find((g) => g.id === selectedGalleryId) || null;
+
+  // Gallery folders: chosen at upload time, used to organise the grid.
+  const GALLERY_FOLDERS = [
+    "General",
+    "Pre-Wedding",
+    "Engagement",
+    "Haldi",
+    "Mehndi",
+    "Sangeet",
+    "Wedding",
+    "Reception",
+    "Custom…",
+  ];
+  const effectiveGalleryFolder = () =>
+    galleryFolder === "General"
+      ? ""
+      : galleryFolder === "Custom…"
+        ? galleryFolderCustom.trim()
+        : galleryFolder;
+  const galleryFoldersPresent = [
+    ...new Set(galleryMedia.map((m) => m.folder || "General")),
+  ];
+  const activeFolderFilter =
+    galleryFolderFilter === "All" ||
+    galleryFoldersPresent.includes(galleryFolderFilter)
+      ? galleryFolderFilter
+      : "All";
+  const visibleGalleryMedia =
+    activeFolderFilter === "All"
+      ? galleryMedia
+      : galleryMedia.filter(
+          (m) => (m.folder || "General") === activeFolderFilter
+        );
 
   const refreshPhotos = async (eventId) => {
     setPhotosLoading(true);
@@ -278,6 +314,7 @@ export default function AdminPage() {
     setGalleryNote("");
     setGalleryProgress({ done: 0, total: files.length, fileName: "Preparing…", loaded: 0, fileTotal: 1 });
     setError("");
+    const targetFolder = effectiveGalleryFolder();
     try {
       const data = await uploadGalleryMediaProgress(
         selectedGalleryId,
@@ -288,7 +325,8 @@ export default function AdminPage() {
           onXhr: (xhr) => {
             galleryXhrRef.current = xhr;
           },
-        }
+        },
+        targetFolder
       );
       setGalleryMedia((prev) => [...(data.media || []), ...prev]);
       setGalleries((prev) =>
@@ -305,7 +343,7 @@ export default function AdminPage() {
           ? `Upload stopped — ${savedCount} of ${files.length} saved.`
           : errs.length
             ? `Saved ${savedCount} of ${files.length}. ${errs[0]}`
-            : `Uploaded ${savedCount} file${savedCount === 1 ? "" : "s"} to Cloudinary.`
+            : `Uploaded ${savedCount} file${savedCount === 1 ? "" : "s"} to Cloudinary${targetFolder ? ` in the ${targetFolder} folder` : ""}.`
       );
     } catch (err) {
       setError(err.message);
@@ -864,7 +902,10 @@ export default function AdminPage() {
                 {galleries.map((g) => (
                   <button
                     key={g.id}
-                    onClick={() => setSelectedGalleryId(g.id)}
+                    onClick={() => {
+                      setSelectedGalleryId(g.id);
+                      setGalleryFolderFilter("All");
+                    }}
                     className={`flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2.5 text-left text-sm transition ${
                       g.id === selectedGalleryId
                         ? "border-l-[3px] border-[#0D9488] bg-white font-semibold text-ink shadow-[0_1px_2px_rgba(23,18,46,0.07)]"
@@ -1054,6 +1095,36 @@ export default function AdminPage() {
                       </span>
                     </div>
                     <div className="mt-4">
+                      <div className="mb-3 flex flex-wrap items-center gap-2">
+                        <label
+                          htmlFor="gallery-folder-select"
+                          className="text-sm font-medium text-ink"
+                        >
+                          Upload into folder
+                        </label>
+                        <select
+                          id="gallery-folder-select"
+                          value={galleryFolder}
+                          onChange={(e) => setGalleryFolder(e.target.value)}
+                          className="field px-3 py-2 text-sm"
+                        >
+                          {GALLERY_FOLDERS.map((f) => (
+                            <option key={f} value={f}>
+                              {f}
+                            </option>
+                          ))}
+                        </select>
+                        {galleryFolder === "Custom…" && (
+                          <input
+                            value={galleryFolderCustom}
+                            onChange={(e) =>
+                              setGalleryFolderCustom(e.target.value)
+                            }
+                            placeholder="Folder name, e.g. Bride Entry"
+                            className="field px-3 py-2 text-sm"
+                          />
+                        )}
+                      </div>
                       <UploadDropzone
                         onFiles={handleGalleryFiles}
                         accept="image/*,video/*"
@@ -1109,6 +1180,31 @@ export default function AdminPage() {
                       )}
                     </div>
 
+                    {galleryMedia.length > 1 && (
+                      <div className="mt-5 flex flex-wrap gap-2">
+                        {["All", ...galleryFoldersPresent].map((f) => (
+                          <button
+                            key={f}
+                            type="button"
+                            onClick={() => setGalleryFolderFilter(f)}
+                            className={`rounded-full px-3.5 py-1.5 text-xs font-semibold transition ${
+                              activeFolderFilter === f
+                                ? "bg-[#0B3B34] text-white"
+                                : "bg-white text-ink ring-1 ring-[#17122e]/15 hover:bg-[#F5F1E8]"
+                            }`}
+                          >
+                            {f} (
+                            {f === "All"
+                              ? galleryMedia.length
+                              : galleryMedia.filter(
+                                  (m) => (m.folder || "General") === f
+                                ).length}
+                            )
+                          </button>
+                        ))}
+                      </div>
+                    )}
+
                     {galleryLoading ? (
                       <p className="py-10 text-center text-sm text-inkdim">Loading…</p>
                     ) : galleryMedia.length === 0 ? (
@@ -1117,7 +1213,7 @@ export default function AdminPage() {
                       </p>
                     ) : (
                       <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3">
-                        {galleryMedia.map((m) => (
+                        {visibleGalleryMedia.map((m) => (
                           <div
                             key={m.id}
                             className="group relative overflow-hidden rounded-xl ring-1 ring-[#17122e]/10"
@@ -1151,6 +1247,7 @@ export default function AdminPage() {
                             </button>
                             <p className="truncate bg-[#17122e]/85 px-2 py-1 text-[11px] text-white/75">
                               {m.filename}
+                              {m.folder ? ` · ${m.folder}` : ""}
                             </p>
                           </div>
                         ))}

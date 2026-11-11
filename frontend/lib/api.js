@@ -189,7 +189,7 @@ export const galleryQrUrl = (slug) =>
  * Mirrors uploadEventPhotosProgress but without face descriptors.
  * Resolves with { media, gallery_media_count, errors }.
  */
-export function uploadGalleryMediaProgress(galleryId, files, onProgress, hooks) {
+export function uploadGalleryMediaProgress(galleryId, files, onProgress, hooks, folder) {
   const list = [...files];
   const allMedia = [];
   let mediaCount = 0;
@@ -224,6 +224,7 @@ export function uploadGalleryMediaProgress(galleryId, files, onProgress, hooks) 
       const file = list[idx];
       const fd = new FormData();
       fd.append("files", file);
+      if (folder) fd.append("folder", folder);
       const xhr = new XMLHttpRequest();
       xhr.open("POST", `${API_URL}/api/admin/galleries/${galleryId}/media`);
       const token = getToken();
