@@ -257,7 +257,8 @@ export default function CoupleGallery() {
                 <button
                   type="submit"
                   disabled={!codeInput.trim()}
-                  className="shrink-0 rounded-md bg-[#211D18] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#3A342C] disabled:opacity-40"
+                  style={{ color: "#FAF7F1" }}
+                  className="shrink-0 rounded-md bg-[#211D18] px-5 py-3 text-sm font-semibold transition hover:bg-[#3A342C] disabled:opacity-40"
                 >
                   Open gallery
                 </button>
@@ -294,46 +295,83 @@ export default function CoupleGallery() {
 
           {/* ---- locked: passcode form ---- */}
           {slug && eventInfo && !unlocked && !infoLoading && (
-            <div className="mx-auto max-w-lg py-14 text-center">
-              <p className="text-[11px] font-medium uppercase tracking-[0.22em] text-[#8A7D68]">
+            <div className="mx-auto max-w-md py-12 text-center sm:py-16">
+              {/* monogram medallion */}
+              <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-white shadow-[0_0_0_1px_#E7DFD2,0_0_0_5px_#FAF7F1,0_0_0_6px_#E7DFD2]">
+                <span
+                  style={serif}
+                  className="text-[26px] font-semibold tracking-[0.14em] text-[#211D18]"
+                >
+                  {(eventInfo.name || "")
+                    .split(/\s+/)
+                    .filter(Boolean)
+                    .slice(0, 2)
+                    .map((w) => w[0].toUpperCase())
+                    .join("")}
+                </span>
+              </div>
+
+              <p className="mt-8 text-[11px] font-medium uppercase tracking-[0.28em] text-[#8A7D68]">
                 Private gallery
               </p>
-              <h1 style={serif} className="mt-3 text-4xl font-semibold sm:text-5xl">
+              <h1 style={serif} className="mt-3 text-5xl font-semibold leading-tight">
                 {eventInfo.name}
               </h1>
-              <p className="mt-4 leading-relaxed text-[#5C5347]">
+
+              {/* ornament divider */}
+              <div className="mx-auto mt-6 flex max-w-[220px] items-center gap-3" aria-hidden="true">
+                <span className="h-px flex-1 bg-[#D8CFBE]" />
+                <span className="block h-[7px] w-[7px] rotate-45 bg-[#B4A582]" />
+                <span className="h-px flex-1 bg-[#D8CFBE]" />
+              </div>
+
+              <p className="mx-auto mt-6 max-w-sm leading-relaxed text-[#5C5347]">
                 {eventInfo.media_count > 0
                   ? `${eventInfo.media_count} photo${eventInfo.media_count === 1 ? "" : "s"} and video${eventInfo.media_count === 1 ? "" : "s"} are waiting for you.`
                   : "Your gallery is being prepared."}{" "}
                 Enter the passcode your photographer gave you. Only you have it.
               </p>
-              <form onSubmit={handleUnlock} className="mx-auto mt-8 max-w-sm">
-                <input
-                  type="password"
-                  value={passcode}
-                  onChange={(e) => {
-                    setPasscode(e.target.value);
-                    setUnlockError("");
-                  }}
-                  placeholder="Gallery passcode"
-                  autoComplete="off"
-                  className="w-full rounded-md border border-[#D8CFBE] bg-white px-4 py-3 text-center text-lg tracking-[0.3em] text-[#211D18] outline-none transition placeholder:text-base placeholder:tracking-normal placeholder:text-[#A3967F] focus:border-[#211D18]"
-                />
-                <button
-                  type="submit"
-                  disabled={unlocking || !passcode.trim()}
-                  className="mt-3 w-full rounded-md bg-[#211D18] px-6 py-3 font-semibold text-white transition hover:bg-[#3A342C] disabled:opacity-40"
-                >
-                  {unlocking ? "Unlocking…" : "Unlock my gallery"}
-                </button>
-              </form>
-              {unlockError && (
-                <p className="mt-4 rounded-md border border-[#E3B7B3] bg-[#FDF0EF] px-4 py-2.5 text-sm text-[#B3261E]">
-                  {unlockError}
-                </p>
-              )}
-              <p className="mt-6 text-xs text-[#8A7D68]">
+
+              <div className="mt-9 rounded-lg border border-[#E7DFD2] bg-white px-6 py-7 text-left shadow-[0_10px_35px_rgba(33,29,24,0.06)] sm:px-8">
+                <form onSubmit={handleUnlock}>
+                  <label
+                    htmlFor="gallery-passcode"
+                    className="block text-center text-[11px] font-semibold uppercase tracking-[0.24em] text-[#8A7D68]"
+                  >
+                    Gallery passcode
+                  </label>
+                  <input
+                    id="gallery-passcode"
+                    type="password"
+                    value={passcode}
+                    onChange={(e) => {
+                      setPasscode(e.target.value);
+                      setUnlockError("");
+                    }}
+                    placeholder="Enter passcode"
+                    autoComplete="off"
+                    className="mt-3 w-full rounded-md border border-[#D8CFBE] bg-[#FAF7F1] px-4 py-3.5 text-center text-lg tracking-[0.3em] text-[#211D18] outline-none transition placeholder:text-base placeholder:tracking-normal placeholder:text-[#A3967F] focus:border-[#211D18] focus:bg-white"
+                  />
+                  <button
+                    type="submit"
+                    disabled={unlocking || !passcode.trim()}
+                    style={{ color: "#FAF7F1" }}
+                    className="mt-4 w-full rounded-md bg-[#211D18] px-6 py-3.5 text-[15px] font-semibold tracking-wide transition hover:bg-[#3A342C] focus:outline-none focus:ring-2 focus:ring-[#211D18] focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    {unlocking ? "Unlocking…" : "Unlock my gallery"}
+                  </button>
+                  {unlockError && (
+                    <p className="mt-4 border-l-2 border-[#B3261E] bg-[#FDF0EF] px-3.5 py-2.5 text-sm text-[#B3261E]">
+                      {unlockError}
+                    </p>
+                  )}
+                </form>
+              </div>
+
+              <p className="mt-6 text-xs leading-relaxed text-[#8A7D68]">
                 No account needed. The passcode is the only key.
+                <br />
+                Keep it between the two of you.
               </p>
             </div>
           )}
@@ -358,7 +396,8 @@ export default function CoupleGallery() {
                 <button
                   onClick={handleDownloadAll}
                   disabled={downloadingAll || media.length === 0}
-                  className="rounded-md bg-[#211D18] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#3A342C] disabled:opacity-40"
+                  style={{ color: "#FAF7F1" }}
+                  className="rounded-md bg-[#211D18] px-5 py-2.5 text-sm font-semibold transition hover:bg-[#3A342C] disabled:opacity-40"
                 >
                   {downloadingAll ? "Downloading…" : "Download all"}
                 </button>
@@ -396,9 +435,14 @@ export default function CoupleGallery() {
                           key={f}
                           type="button"
                           onClick={() => setFolderFilter(f)}
+                          style={
+                            activeFolder === f
+                              ? { color: "#FAF7F1" }
+                              : undefined
+                          }
                           className={`rounded-full px-4 py-1.5 text-xs font-semibold transition ${
                             activeFolder === f
-                              ? "bg-[#211D18] text-white"
+                              ? "bg-[#211D18]"
                               : "bg-white text-[#5C5347] ring-1 ring-[#E7DFD2] hover:ring-[#211D18]"
                           }`}
                         >
