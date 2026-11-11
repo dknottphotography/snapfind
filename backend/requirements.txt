@@ -13,3 +13,7 @@ gunicorn==23.0.0
 # Couple's gallery: permanent photo/video storage on the client's
 # Cloudinary account (unsigned upload preset — no API secret in code).
 cloudinary==1.41.0
+# Permanent records database (Neon Postgres) — used when DATABASE_URL
+# points at Postgres; without it the app falls back to local SQLite,
+# which Render's free tier wipes on every deploy/restart.
+psycopg[binary]>=3.2,<3.3

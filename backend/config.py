@@ -12,9 +12,18 @@ class Config:
     SECRET_KEY = os.environ.get("SECRET_KEY", "dev-secret-change-me")
     JWT_SECRET = os.environ.get("JWT_SECRET", "dev-jwt-change-me")
 
-    SQLALCHEMY_DATABASE_URI = os.environ.get(
+    # DATABASE_URL decides where the app's records live. A Postgres URL
+    # (e.g. Neon) is permanent storage that survives deploys/restarts;
+    # without one, records fall back to a local SQLite file — which
+    # Render's free tier wipes on every deploy/restart.
+    _db_url = os.environ.get(
         "DATABASE_URL", f"sqlite:///{os.path.join(BASE_DIR, 'samaro.db')}"
     )
+    if _db_url.startswith("postgres://"):
+        _db_url = "postgresql+psycopg://" + _db_url[len("postgres://"):]
+    elif _db_url.startswith("postgresql://"):
+        _db_url = "postgresql+psycopg://" + _db_url[len("postgresql://"):]
+    SQLALCHEMY_DATABASE_URI = _db_url
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
     # ---- Local file storage (the whole point: no Cloudinary / S3) ----
