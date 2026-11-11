@@ -95,18 +95,19 @@ def delete_media(public_id: str, media_type: str) -> bool:
 
 
 # ------------------------------------------------------------- watermark
-# Small DKNOTT logo in the top-left corner of every delivered photo
-# (approved by the owner 2026-11-10). Two transparent variants of the logo
-# live in this same cloud; the backend picks per photo by the brightness
-# of the corner the logo will sit on: white logo on a dark corner, black
-# logo on a bright one. The stored originals are never modified — the
-# overlay exists only in delivery URLs.
+# Small DKNOTT logo in the bottom-left corner of every delivered photo
+# (approved by the owner 2026-11-10; moved from top-left to bottom-left
+# 2026-11-11). Two transparent variants of the logo live in this same
+# cloud; the backend picks per photo by the brightness of the corner the
+# logo will sit on: white logo on a dark corner, black logo on a bright
+# one. The stored originals are never modified — the overlay exists only
+# in delivery URLs.
 WATERMARK_LOGOS = {
     "white": "snapfind:branding:dknott-logo-white",
     "black": "snapfind:branding:dknott-logo-black",
 }
-# Mean luminance (0-255) of the top-left corner at/above which the black
-# logo reads better than the white one.
+# Mean luminance (0-255) of the bottom-left corner at/above which the
+# black logo reads better than the white one.
 WATERMARK_BRIGHT_THRESHOLD = 150
 
 
@@ -117,14 +118,14 @@ def _watermark_steps(variant: str) -> list:
         return []
     return [
         {"overlay": logo, "width": 0.09, "flags": "relative", "opacity": 85},
-        {"flags": "layer_apply", "gravity": "north_west", "x": 18, "y": 18},
+        {"flags": "layer_apply", "gravity": "south_west", "x": 18, "y": 18},
     ]
 
 
 def corner_variant(image_bytes: bytes) -> str:
     """Pick the watermark colour for a photo from its raw bytes.
 
-    Looks at the top-left patch where the logo will sit and returns
+    Looks at the bottom-left patch where the logo will sit and returns
     "black" when that patch is bright, "white" when it is dark.
     Falls back to "white" if the bytes cannot be decoded.
     """
@@ -136,7 +137,7 @@ def corner_variant(image_bytes: bytes) -> str:
         img = Image.open(io.BytesIO(image_bytes)).convert("L")
         w, h = img.size
         side = max(8, int(w * 0.16))
-        patch = img.crop((0, 0, min(w, side), min(h, side))).resize((24, 24))
+        patch = img.crop((0, h - min(h, side), min(w, side), h)).resize((24, 24))
         mean = sum(patch.getdata()) / (24 * 24)
         return "black" if mean >= WATERMARK_BRIGHT_THRESHOLD else "white"
     except Exception:

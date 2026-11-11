@@ -210,7 +210,7 @@ def gallery_media_payload(item: GalleryMedia) -> dict:
     if gallery_cloudinary._cloud_name():
         media_type = item.media_type or "photo"
         if media_type == "photo":
-            # Photos are delivered watermarked (DKNOTT logo, top-left);
+            # Photos are delivered watermarked (DKNOTT logo, bottom-left);
             # the clean original URL is never exposed.
             variant = _ensure_wm_variant(item)
             url = gallery_cloudinary.full_url(item.cloudinary_public_id, variant)
@@ -264,7 +264,7 @@ def _cloudinary_ready() -> bool:
 def photo_payload(photo: Photo, distance=None) -> dict:
     be = _public_base()
     if photo.cloudinary_public_id:
-        # Delivered watermarked (DKNOTT logo, top-left, colour picked per
+        # Delivered watermarked (DKNOTT logo, bottom-left, colour picked per
         # photo); the clean original URL is never exposed.
         variant = _ensure_wm_variant(photo)
         url = gallery_cloudinary.full_url(photo.cloudinary_public_id, variant)
@@ -553,7 +553,7 @@ def upload_event_photos(event_id):
             # Permanent storage: the file goes to Cloudinary; only its
             # URL/public_id are kept in the database row.
             f.stream.seek(0)
-            # Watermark colour from the photo's own top-left corner.
+            # Watermark colour from the photo's own bottom-left corner.
             wm_variant = gallery_cloudinary.corner_variant(f.stream.read())
             f.stream.seek(0)
             try:
@@ -717,7 +717,7 @@ def upload_gallery_media(gallery_id):
             continue
         wm_variant = None
         if media_type == "photo":
-            # Watermark colour from the photo's own top-left corner.
+            # Watermark colour from the photo's own bottom-left corner.
             f.stream.seek(0)
             wm_variant = gallery_cloudinary.corner_variant(f.stream.read())
             f.stream.seek(0)
