@@ -360,14 +360,31 @@ def public_event(slug):
 # correct passcode.
 @app.get("/api/gallery/<slug>")
 def gallery_public(slug):
-    """Public info only: gallery name + media count. No URLs, no passcode hint."""
+    """Public info only: gallery name, media count and a hero cover photo.
+
+    The cover is the watermarked display copy of the first photo, so the
+    landing screen can show the couple's cover before any PIN is entered.
+    No full URLs, no passcode hint.
+    """
     gallery = CoupleGallery.query.filter_by(slug=slug.strip().lower()).first()
     if not gallery:
         return jsonify({"error": "Gallery not found"}), 404
+    cover = (
+        gallery.media.filter_by(media_type="photo")
+        .order_by(GalleryMedia.created_at.asc()).first()
+        or gallery.media.order_by(GalleryMedia.created_at.asc()).first()
+    )
+    cover_url = None
+    if cover:
+        try:
+            cover_url = gallery_media_payload(cover).get("display_url")
+        except Exception:
+            cover_url = None
     return jsonify({"gallery": {
         "name": gallery.name,
         "slug": gallery.slug,
         "media_count": _gallery_media_count(gallery),
+        "cover_url": cover_url,
     }})
 
 
@@ -655,10 +672,11 @@ def delete_gallery(gallery_id):
 @app.put("/api/admin/galleries/<int:gallery_id>/passcode")
 @admin_required
 def set_gallery_passcode(gallery_id):
-    """Set or change a gallery's passcode (min 4 characters).
+    """Set or change a gallery's passcode — a 4-digit PIN (2026-11-12).
 
-    Send {"passcode": ""} to remove the passcode — the gallery then stays
-    locked until a new one is set. The passcode is stored only as a hash.
+    The couple types it on a numeric keypad, so it must be exactly 4
+    digits. Send {"passcode": ""} to remove the passcode — the gallery
+    then stays locked until a new one is set. Stored only as a hash.
     """
     gallery = _own_gallery_or_404(gallery_id)
     if gallery is None:
@@ -669,8 +687,8 @@ def set_gallery_passcode(gallery_id):
         gallery.clear_passcode()
         db.session.commit()
         return jsonify({"has_passcode": False, "gallery_url": _gallery_url(gallery)})
-    if len(passcode) < 4:
-        return jsonify({"error": "Passcode must be at least 4 characters."}), 400
+    if not re.fullmatch(r"\d{4}", passcode):
+        return jsonify({"error": "The PIN must be exactly 4 digits."}), 400
     gallery.set_passcode(passcode)
     db.session.commit()
     return jsonify({"has_passcode": True, "gallery_url": _gallery_url(gallery)})

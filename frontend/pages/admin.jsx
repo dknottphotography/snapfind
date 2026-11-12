@@ -262,6 +262,10 @@ export default function AdminPage() {
   const handleSavePasscode = async (e) => {
     e.preventDefault();
     if (!selectedGalleryId) return;
+    if (!/^\d{4}$/.test(passcodeInput.trim())) {
+      setError("The PIN must be exactly 4 digits.");
+      return;
+    }
     setPasscodeSaving(true);
     setPasscodeNote("");
     setError("");
@@ -277,8 +281,8 @@ export default function AdminPage() {
       setPasscodeInput("");
       setPasscodeNote(
         data.has_passcode
-          ? "Passcode saved — send it to the couple in a separate message from the link."
-          : "Passcode removed — the gallery stays locked until a new one is set."
+          ? "PIN saved — send it to the couple in a separate message from the link."
+          : "PIN removed — the gallery stays locked until a new one is set."
       );
     } catch (err) {
       setError(err.message);
@@ -966,11 +970,11 @@ export default function AdminPage() {
                       <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5">
                         {selectedGallery.has_passcode ? (
                           <span className="rounded-full bg-[rgba(255,255,255,0.14)] px-2.5 py-0.5 text-xs font-semibold text-[#A9E5CB]">
-                            Passcode set
+                            PIN set
                           </span>
                         ) : (
                           <span className="rounded-full bg-[rgba(251,191,36,0.18)] px-2.5 py-0.5 text-xs font-semibold text-[#FCD34D]">
-                            No passcode yet
+                            No PIN yet
                           </span>
                         )}
                         <span className="text-[13px] text-[rgba(255,255,255,0.6)]">
@@ -1020,16 +1024,23 @@ export default function AdminPage() {
                           htmlFor="gallery-passcode"
                           className="text-[13px] font-medium text-[rgba(255,255,255,0.65)]"
                         >
-                          Passcode (changing it signs the couple out immediately)
+                          Gallery PIN — 4 digits (changing it signs the couple
+                          out immediately)
                         </label>
                         <div className="mt-1.5 flex gap-2">
                           <input
                             id="gallery-passcode"
                             value={passcodeInput}
-                            onChange={(e) => setPasscodeInput(e.target.value)}
-                            placeholder="Enter a new passcode"
+                            onChange={(e) =>
+                              setPasscodeInput(
+                                e.target.value.replace(/\D/g, "").slice(0, 4)
+                              )
+                            }
+                            placeholder="4-digit PIN, e.g. 2580"
+                            inputMode="numeric"
+                            maxLength={4}
                             autoComplete="off"
-                            className="min-w-0 flex-1 rounded-lg border border-[rgba(255,255,255,0.25)] bg-transparent px-3.5 py-2.5 text-sm text-[#F5FAF7] outline-none transition placeholder:text-[rgba(255,255,255,0.4)] focus:border-[rgba(255,255,255,0.55)]"
+                            className="min-w-0 flex-1 rounded-lg border border-[rgba(255,255,255,0.25)] bg-transparent px-3.5 py-2.5 text-sm tracking-[0.3em] text-[#F5FAF7] outline-none transition placeholder:text-[rgba(255,255,255,0.4)] focus:border-[rgba(255,255,255,0.55)]"
                           />
                           <button
                             type="submit"
@@ -1044,8 +1055,8 @@ export default function AdminPage() {
                         ) : (
                           <p className="mt-2 text-[13px] text-[rgba(255,255,255,0.55)]">
                             {selectedGallery.has_passcode
-                              ? "Current passcode: ••••. Send it in a different message from the link."
-                              : "No passcode yet — the gallery stays locked until you set one."}
+                              ? "Current PIN: ••••. Send it in a different message from the link."
+                              : "No PIN yet — the gallery stays locked until you set one."}
                           </p>
                         )}
                       </form>

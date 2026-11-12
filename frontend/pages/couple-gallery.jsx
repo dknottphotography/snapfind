@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/router";
 import Head from "next/head";
 import {
@@ -11,60 +11,29 @@ import {
 } from "../lib/api";
 
 // STANDALONE PAGE — separate from the SnapFind website.
-// This page deliberately shares nothing visual with SnapFind:
-// no SnapFind navbar, no SnapFind branding, no links back to SnapFind,
-// and a different (light, editorial) design. Couples reach it only
-// through the private link their photographer sends them.
-//
-// Static-export friendly: the gallery slug comes from ?gallery=<slug>
-// (the photographer's generated link or QR). ?event= is accepted only as
-// a legacy fallback; galleries are standalone and are not SnapFind events.
-// Flow: open private link -> enter passcode -> photos and videos.
+// Dark, cinematic couple's gallery in the style of the studio's
+// reference experience (dknottphotography.ve.ai): full-bleed hero
+// cover -> 4-digit PIN keypad -> folder cards (Engagement, Haldi,
+// Wedding, ...) -> photo grid -> viewer with Original / Optimized
+// download choices. No SnapFind branding, no links back to SnapFind.
+// Flow: open private link -> ENTER -> PIN -> albums.
 // No account, no signup.
 
 const serif = { fontFamily: "'Cormorant Garamond', Georgia, 'Times New Roman', serif" };
+const INK = "#17171A";
+const CARD = "#232327";
+const MUTED = "#A8A29A";
+const FAV_KEY = (slug) => `snapfind:favs:${slug}`;
 
-function GalleryHeader({ onLock, unlocked }) {
-  return (
-    <header className="border-b border-[#E7DFD2] bg-[#FAF7F1]">
-      <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-5 sm:px-6">
-        <div>
-          <p style={serif} className="text-2xl font-semibold leading-none text-[#211D18]">
-            Private Gallery
-          </p>
-          <p className="mt-1 text-[11px] font-medium uppercase tracking-[0.22em] text-[#8A7D68]">
-            For the bride and groom only
-          </p>
-        </div>
-        {unlocked && (
-          <button
-            onClick={onLock}
-            className="rounded-md border border-[#D8CFBE] px-4 py-2 text-sm font-medium text-[#4A4238] transition hover:border-[#211D18] hover:text-[#211D18]"
-          >
-            Lock gallery
-          </button>
-        )}
-      </div>
-    </header>
-  );
-}
-
-function GalleryFooter() {
-  return (
-    <footer className="border-t border-[#E7DFD2] py-8">
-      <p className="px-4 text-center text-xs leading-relaxed text-[#8A7D68]">
-        This is a private gallery, shared only with the couple by their
-        photographer. Please keep your passcode to yourselves.
-      </p>
-    </footer>
-  );
+function countLabel(n, singular = "Photo", plural = "Photos") {
+  return `${n} ${n === 1 ? singular : plural}`;
 }
 
 export default function CoupleGallery() {
   const router = useRouter();
   const [slug, setSlug] = useState(null);
 
-  // Entry form (no ?event= in the URL yet)
+  // Entry form (no ?gallery= in the URL yet)
   const [codeInput, setCodeInput] = useState("");
   const [codeError, setCodeError] = useState("");
 
@@ -73,20 +42,49 @@ export default function CoupleGallery() {
   const [infoLoading, setInfoLoading] = useState(false);
   const [infoError, setInfoError] = useState("");
 
-  // Passcode
-  const [passcode, setPasscode] = useState("");
+  // Screens: hero | pin | albums | folder | videos | favs | more
+  const [view, setView] = useState("hero");
+  const [openFolder, setOpenFolder] = useState(null);
+
+  // PIN
+  const [pin, setPin] = useState("");
   const [unlocking, setUnlocking] = useState(false);
   const [unlockError, setUnlockError] = useState("");
 
   // Media
   const [unlocked, setUnlocked] = useState(false);
   const [media, setMedia] = useState([]);
-  const [folderFilter, setFolderFilter] = useState("All");
   const [mediaLoading, setMediaLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const [viewer, setViewer] = useState(null);
+  const [viewer, setViewer] = useState(null); // {item, list}
+  const [sheet, setSheet] = useState(null); // null | "download"
   const [downloadingAll, setDownloadingAll] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  // Favourites live on this device only.
+  const [favs, setFavs] = useState([]);
+  useEffect(() => {
+    if (!slug) return;
+    try {
+      setFavs(JSON.parse(localStorage.getItem(FAV_KEY(slug)) || "[]"));
+    } catch {
+      setFavs([]);
+    }
+  }, [slug]);
+  const toggleFav = (id) => {
+    setFavs((prev) => {
+      const next = prev.includes(id)
+        ? prev.filter((x) => x !== id)
+        : [...prev, id];
+      try {
+        localStorage.setItem(FAV_KEY(slug), JSON.stringify(next));
+      } catch {
+        /* private mode — favourites just won't persist */
+      }
+      return next;
+    });
+  };
 
   useEffect(() => {
     if (!router.isReady) return;
@@ -102,6 +100,7 @@ export default function CoupleGallery() {
     setEventInfo(null);
     setUnlocked(false);
     setMedia([]);
+    setView("hero");
     getGalleryPublic(slug)
       .then((d) => {
         setEventInfo(d.gallery || d.event);
@@ -121,37 +120,64 @@ export default function CoupleGallery() {
       setMedia(data.media || []);
       setUnlocked(true);
       setUnlockError("");
+      setView("albums");
     } catch (err) {
       clearGalleryToken(slug);
       setUnlocked(false);
+      setView("hero");
       if (!silent) setError(err.message);
     } finally {
       setMediaLoading(false);
     }
   };
 
-  const handleUnlock = async (e) => {
-    e.preventDefault();
-    if (!passcode.trim()) return;
+  const attemptUnlock = async (code) => {
+    if (unlocking || code.length !== 4) return;
     setUnlocking(true);
     setUnlockError("");
     try {
-      const data = await unlockGallery(slug, passcode.trim());
+      const data = await unlockGallery(slug, code);
       saveGalleryToken(slug, data.token);
+      setPin("");
       await fetchMedia(data.token);
     } catch (err) {
       setUnlockError(err.message);
+      setPin("");
     } finally {
       setUnlocking(false);
     }
   };
 
+  // 4th digit typed -> unlock right away.
+  useEffect(() => {
+    if (view === "pin" && pin.length === 4) attemptUnlock(pin);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pin, view]);
+
+  // Physical keyboard support on the PIN screen.
+  useEffect(() => {
+    if (view !== "pin") return;
+    const onKey = (e) => {
+      if (/^[0-9]$/.test(e.key)) {
+        setPin((p) => (p.length < 4 ? p + e.key : p));
+        setUnlockError("");
+      } else if (e.key === "Backspace") {
+        setPin((p) => p.slice(0, -1));
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [view]);
+
   const handleLock = () => {
     clearGalleryToken(slug);
     setUnlocked(false);
     setMedia([]);
-    setPasscode("");
+    setPin("");
     setViewer(null);
+    setSheet(null);
+    setOpenFolder(null);
+    setView("hero");
   };
 
   const extractSlug = (text) => {
@@ -178,6 +204,16 @@ export default function CoupleGallery() {
     router.push(`/couple-gallery?gallery=${encodeURIComponent(s)}`);
   };
 
+  const copyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      /* clipboard unavailable — nothing to show */
+    }
+  };
+
   const handleDownloadAll = async () => {
     if (!media.length || downloadingAll) return;
     setDownloadingAll(true);
@@ -193,23 +229,68 @@ export default function CoupleGallery() {
     setDownloadingAll(false);
   };
 
+  const downloadItem = (item, original) => {
+    const a = document.createElement("a");
+    a.href = original
+      ? item.download_url || item.url
+      : item.display_url || item.url;
+    a.download = item.filename || "";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setSheet(null);
+  };
+
   const photos = media.filter((m) => m.media_type !== "video");
   const videos = media.filter((m) => m.media_type === "video");
+  const favItems = media.filter((m) => favs.includes(m.id));
 
-  // Folders (Haldi, Wedding, ...) organise the grid when the
-  // photographer used them at upload time.
-  const folderBuckets = [
-    ...new Set(media.map((m) => m.folder || "General")),
-  ];
-  const showFolderChips = media.some((m) => m.folder);
-  const activeFolder =
-    folderFilter === "All" || folderBuckets.includes(folderFilter)
-      ? folderFilter
-      : "All";
-  const visibleMedia =
-    activeFolder === "All"
-      ? media
-      : media.filter((m) => (m.folder || "General") === activeFolder);
+  // Folders, in the order their first photo was uploaded (oldest first);
+  // uncategorised photos form an "All Photos" card at the end.
+  const folders = useMemo(() => {
+    const map = new Map();
+    for (const m of [...media].reverse()) {
+      const f = (m.folder || "").trim() || "All Photos";
+      if (!map.has(f)) map.set(f, []);
+      map.get(f).push(m);
+    }
+    const entries = [...map.entries()];
+    const named = entries
+      .filter(([n]) => n !== "All Photos")
+      .sort((a, b) => new Date(a[1][0].created_at) - new Date(b[1][0].created_at));
+    const general = entries.filter(([n]) => n === "All Photos");
+    return [...named, ...general];
+  }, [media]);
+
+  const folderCover = (items) => {
+    const photo = items.find((m) => m.media_type !== "video");
+    const item = photo || items[0];
+    return item ? item.display_url || item.url : null;
+  };
+
+  const cover = eventInfo?.cover_url || null;
+  const mediaCount = eventInfo?.media_count ?? media.length;
+
+  const openViewer = (item, list) => setViewer({ item, list });
+  const viewerIndex = viewer
+    ? viewer.list.findIndex((m) => m.id === viewer.item.id)
+    : -1;
+  const stepViewer = (dir) => {
+    if (!viewer || viewer.list.length < 2) return;
+    const next =
+      (viewerIndex + dir + viewer.list.length) % viewer.list.length;
+    setViewer({ item: viewer.list[next], list: viewer.list });
+  };
+
+  const keypadPress = (key) => {
+    if (unlocking) return;
+    if (key === "back") {
+      setPin((p) => p.slice(0, -1));
+    } else if (pin.length < 4) {
+      setPin((p) => p + key);
+      setUnlockError("");
+    }
+  };
 
   return (
     <>
@@ -218,10 +299,11 @@ export default function CoupleGallery() {
           {eventInfo ? `${eventInfo.name} — Private Gallery` : "Private Gallery"}
         </title>
         <meta name="robots" content="noindex, nofollow" />
+        <meta name="theme-color" content="#17171A" />
         <link rel="icon" type="image/svg+xml" href="/gallery-favicon.svg" />
         <meta
           name="description"
-          content="A private photo and video gallery for the bride and groom. Open it with the passcode from your photographer."
+          content="A private photo and video gallery for the bride and groom. Open it with the PIN from your photographer."
         />
         <link
           href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500&display=swap"
@@ -229,339 +311,572 @@ export default function CoupleGallery() {
         />
       </Head>
 
-      <div className="flex min-h-screen flex-col bg-[#FAF7F1] text-[#211D18]">
-        <GalleryHeader onLock={handleLock} unlocked={unlocked} />
-
-        <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-10 sm:px-6">
-          {/* ---- no link yet: entry form ---- */}
-          {!slug && (
-            <div className="mx-auto max-w-lg py-14 text-center">
-              <h1 style={serif} className="text-4xl font-semibold sm:text-5xl">
-                Your private gallery
-              </h1>
-              <p className="mt-4 leading-relaxed text-[#5C5347]">
-                Your photographer sent you a private link. Paste it below,
-                or type your event code, then enter the passcode to open
-                your photos and videos.
-              </p>
-              <form onSubmit={handleOpenGallery} className="mt-8 flex gap-2">
-                <input
-                  value={codeInput}
-                  onChange={(e) => {
-                    setCodeInput(e.target.value);
-                    setCodeError("");
-                  }}
-                  placeholder="Paste your gallery link or event code"
-                  className="min-w-0 flex-1 rounded-md border border-[#D8CFBE] bg-white px-4 py-3 text-sm text-[#211D18] outline-none transition placeholder:text-[#A3967F] focus:border-[#211D18]"
-                />
-                <button
-                  type="submit"
-                  disabled={!codeInput.trim()}
-                  style={{ color: "#FAF7F1" }}
-                  className="shrink-0 rounded-md bg-[#211D18] px-5 py-3 text-sm font-semibold transition hover:bg-[#3A342C] disabled:opacity-40"
-                >
-                  Open gallery
-                </button>
-              </form>
-              {codeError && (
-                <p className="mt-3 text-sm text-[#B3261E]">{codeError}</p>
-              )}
-            </div>
-          )}
-
-          {/* ---- link present, info loading / not found ---- */}
-          {slug && infoLoading && (
-            <p className="py-24 text-center text-sm text-[#5C5347]">
-              Loading your gallery…
+      <div
+        className="min-h-[100dvh] text-[#F5F2EC]"
+        style={{ backgroundColor: INK }}
+      >
+        {/* ---- loading (never a blank screen) ---- */}
+        {slug && infoLoading && (
+          <div className="flex min-h-[100dvh] flex-col items-center justify-center px-6 text-center">
+            <p style={serif} className="text-3xl font-semibold">
+              Private Gallery
             </p>
-          )}
-          {slug && infoError && (
-            <div className="mx-auto max-w-lg py-14 text-center">
-              <div className="rounded-lg border border-[#E7DFD2] bg-white p-10">
-                <h1 style={serif} className="text-3xl font-semibold">Gallery not found</h1>
-                <p className="mt-3 leading-relaxed text-[#5C5347]">
-                  This gallery link looks invalid. Ask your photographer for
-                  a fresh link.
-                </p>
-                <button
-                  onClick={() => router.push("/couple-gallery")}
-                  className="mt-6 rounded-md border border-[#211D18] px-6 py-3 text-sm font-semibold text-[#211D18] transition hover:bg-[#211D18] hover:text-white"
-                >
-                  Try another link
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* ---- locked: passcode form ---- */}
-          {slug && eventInfo && !unlocked && !infoLoading && (
-            <div className="mx-auto max-w-md py-12 text-center sm:py-16">
-              {/* monogram medallion */}
-              <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-white shadow-[0_0_0_1px_#E7DFD2,0_0_0_5px_#FAF7F1,0_0_0_6px_#E7DFD2]">
+            <p className="mt-4 text-sm tracking-[0.2em] text-[#A8A29A]">
+              LOADING YOUR GALLERY
+            </p>
+            <div className="mt-6 flex gap-2" aria-hidden="true">
+              {[0, 1, 2].map((i) => (
                 <span
-                  style={serif}
-                  className="text-[26px] font-semibold tracking-[0.14em] text-[#211D18]"
-                >
-                  {(eventInfo.name || "")
-                    .split(/\s+/)
-                    .filter(Boolean)
-                    .slice(0, 2)
-                    .map((w) => w[0].toUpperCase())
-                    .join("")}
-                </span>
-              </div>
+                  key={i}
+                  className="h-2 w-2 animate-pulse rounded-full bg-white/60"
+                  style={{ animationDelay: `${i * 0.2}s` }}
+                />
+              ))}
+            </div>
+          </div>
+        )}
 
-              <p className="mt-8 text-[11px] font-medium uppercase tracking-[0.28em] text-[#8A7D68]">
-                Private gallery
+        {/* ---- no link yet: entry form ---- */}
+        {!slug && !infoLoading && (
+          <div className="mx-auto flex min-h-[100dvh] max-w-md flex-col items-center justify-center px-6 py-14 text-center">
+            <p style={serif} className="text-4xl font-semibold sm:text-5xl">
+              Your private gallery
+            </p>
+            <p className="mt-4 leading-relaxed text-[#A8A29A]">
+              Your photographer sent you a private link. Paste it below,
+              or type your event code, then enter the PIN to open your
+              photos and videos.
+            </p>
+            <form onSubmit={handleOpenGallery} className="mt-8 w-full">
+              <input
+                value={codeInput}
+                onChange={(e) => {
+                  setCodeInput(e.target.value);
+                  setCodeError("");
+                }}
+                placeholder="Paste your gallery link or event code"
+                className="w-full rounded-full border border-white/15 bg-white/5 px-5 py-3.5 text-center text-sm text-[#F5F2EC] outline-none transition placeholder:text-[#A8A29A] focus:border-white/40"
+              />
+              <button
+                type="submit"
+                disabled={!codeInput.trim()}
+                style={{ color: "#17171A" }}
+                className="mt-3 w-full rounded-full bg-white px-6 py-3.5 text-sm font-semibold tracking-wide transition hover:bg-zinc-200 disabled:opacity-40"
+              >
+                ENTER
+              </button>
+            </form>
+            {codeError && (
+              <p className="mt-3 text-sm text-[#F87171]">{codeError}</p>
+            )}
+          </div>
+        )}
+
+        {/* ---- gallery not found ---- */}
+        {slug && infoError && !infoLoading && (
+          <div className="mx-auto flex min-h-[100dvh] max-w-md flex-col items-center justify-center px-6 py-14 text-center">
+            <p style={serif} className="text-4xl font-semibold">
+              Gallery not found
+            </p>
+            <p className="mt-4 leading-relaxed text-[#A8A29A]">
+              This gallery link looks invalid. Ask your photographer for a
+              fresh link.
+            </p>
+            <button
+              onClick={() => router.push("/couple-gallery")}
+              className="mt-8 rounded-full border border-white/25 px-6 py-3 text-sm font-semibold text-[#F5F2EC] transition hover:border-white/60"
+            >
+              Try another link
+            </button>
+          </div>
+        )}
+
+        {/* ---- hero: cover + ENTER ---- */}
+        {slug && eventInfo && !unlocked && view === "hero" && !infoLoading && (
+          <div className="relative min-h-[100dvh]">
+            {cover ? (
+              <img
+                src={cover}
+                alt={eventInfo.name}
+                className="absolute inset-0 h-full w-full object-cover"
+              />
+            ) : (
+              <div
+                className="absolute inset-0"
+                style={{
+                  background:
+                    "radial-gradient(120% 90% at 50% 10%, #2A2A2E 0%, #17171A 60%)",
+                }}
+              />
+            )}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-black/30" />
+            <div className="relative flex min-h-[100dvh] flex-col justify-end px-6 pb-12">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-white/60">
+                Private Gallery
               </p>
-              <h1 style={serif} className="mt-3 text-5xl font-semibold leading-tight">
+              <h1
+                style={serif}
+                className="mt-2 text-4xl font-semibold uppercase leading-tight tracking-wide sm:text-5xl"
+              >
                 {eventInfo.name}
               </h1>
-
-              {/* ornament divider */}
-              <div className="mx-auto mt-6 flex max-w-[220px] items-center gap-3" aria-hidden="true">
-                <span className="h-px flex-1 bg-[#D8CFBE]" />
-                <span className="block h-[7px] w-[7px] rotate-45 bg-[#B4A582]" />
-                <span className="h-px flex-1 bg-[#D8CFBE]" />
-              </div>
-
-              <p className="mx-auto mt-6 max-w-sm leading-relaxed text-[#5C5347]">
-                {eventInfo.media_count > 0
-                  ? `${eventInfo.media_count} photo${eventInfo.media_count === 1 ? "" : "s"} and video${eventInfo.media_count === 1 ? "" : "s"} are waiting for you.`
-                  : "Your gallery is being prepared."}{" "}
-                Enter the passcode your photographer gave you. Only you have it.
+              <p className="mt-2 text-sm text-white/70">
+                {countLabel(mediaCount)}
               </p>
-
-              <div className="mt-9 rounded-lg border border-[#E7DFD2] bg-white px-6 py-7 text-left shadow-[0_10px_35px_rgba(33,29,24,0.06)] sm:px-8">
-                <form onSubmit={handleUnlock}>
-                  <label
-                    htmlFor="gallery-passcode"
-                    className="block text-center text-[11px] font-semibold uppercase tracking-[0.24em] text-[#8A7D68]"
-                  >
-                    Gallery passcode
-                  </label>
-                  <input
-                    id="gallery-passcode"
-                    type="password"
-                    value={passcode}
-                    onChange={(e) => {
-                      setPasscode(e.target.value);
-                      setUnlockError("");
-                    }}
-                    placeholder="Enter passcode"
-                    autoComplete="off"
-                    className="mt-3 w-full rounded-md border border-[#D8CFBE] bg-[#FAF7F1] px-4 py-3.5 text-center text-lg tracking-[0.3em] text-[#211D18] outline-none transition placeholder:text-base placeholder:tracking-normal placeholder:text-[#A3967F] focus:border-[#211D18] focus:bg-white"
-                  />
-                  <button
-                    type="submit"
-                    disabled={unlocking || !passcode.trim()}
-                    style={{ color: "#FAF7F1" }}
-                    className="mt-4 w-full rounded-md bg-[#211D18] px-6 py-3.5 text-[15px] font-semibold tracking-wide transition hover:bg-[#3A342C] focus:outline-none focus:ring-2 focus:ring-[#211D18] focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-40"
-                  >
-                    {unlocking ? "Unlocking…" : "Unlock my gallery"}
-                  </button>
-                  {unlockError && (
-                    <p className="mt-4 border-l-2 border-[#B3261E] bg-[#FDF0EF] px-3.5 py-2.5 text-sm text-[#B3261E]">
-                      {unlockError}
-                    </p>
-                  )}
-                </form>
-              </div>
-
-              <p className="mt-6 text-xs leading-relaxed text-[#8A7D68]">
-                No account needed. The passcode is the only key.
-                <br />
-                Keep it between the two of you.
-              </p>
+              <button
+                onClick={() => setView("pin")}
+                style={{ color: "#17171A" }}
+                className="mt-6 w-36 rounded-full bg-white px-6 py-3 text-sm font-semibold tracking-[0.15em] transition hover:bg-zinc-200"
+              >
+                ENTER
+              </button>
             </div>
-          )}
+          </div>
+        )}
 
-          {/* ---- unlocked: media grid ---- */}
-          {slug && eventInfo && unlocked && (
-            <>
-              <div className="flex flex-wrap items-end justify-between gap-4 border-b border-[#E7DFD2] pb-6">
-                <div>
-                  <p className="text-[11px] font-medium uppercase tracking-[0.22em] text-[#8A7D68]">
-                    Private gallery
-                  </p>
-                  <h1 style={serif} className="mt-2 text-4xl font-semibold">
-                    {eventInfo.name}
-                  </h1>
-                  <p className="mt-2 text-sm text-[#5C5347]">
-                    {media.length} item{media.length === 1 ? "" : "s"}
-                    {photos.length > 0 && ` · ${photos.length} photo${photos.length === 1 ? "" : "s"}`}
-                    {videos.length > 0 && ` · ${videos.length} video${videos.length === 1 ? "" : "s"}`}
-                  </p>
-                </div>
-                <button
-                  onClick={handleDownloadAll}
-                  disabled={downloadingAll || media.length === 0}
-                  style={{ color: "#FAF7F1" }}
-                  className="rounded-md bg-[#211D18] px-5 py-2.5 text-sm font-semibold transition hover:bg-[#3A342C] disabled:opacity-40"
-                >
-                  {downloadingAll ? "Downloading…" : "Download all"}
-                </button>
-              </div>
+        {/* ---- PIN keypad ---- */}
+        {slug && eventInfo && !unlocked && view === "pin" && !infoLoading && (
+          <div className="relative min-h-[100dvh] overflow-hidden">
+            {cover && (
+              <img
+                src={cover}
+                alt=""
+                aria-hidden="true"
+                className="absolute inset-0 h-full w-full scale-110 object-cover opacity-40 blur-2xl"
+              />
+            )}
+            <div className="absolute inset-0 bg-black/60" />
+            <div className="relative mx-auto flex min-h-[100dvh] w-full max-w-sm flex-col px-6 pb-10 pt-5">
+              <button
+                onClick={() => {
+                  setView("hero");
+                  setPin("");
+                  setUnlockError("");
+                }}
+                className="self-start rounded-full bg-white/10 px-4 py-2 text-sm font-medium text-white/80 transition hover:bg-white/20"
+              >
+                ← Back
+              </button>
 
-              {error && (
-                <div className="mt-4 rounded-md border border-[#E3B7B3] bg-[#FDF0EF] px-4 py-2.5 text-sm text-[#B3261E]">
-                  {error}
-                </div>
-              )}
-
-              {mediaLoading ? (
-                <p className="py-16 text-center text-sm text-[#5C5347]">
-                  Loading your photos and videos…
+              <div className="flex flex-1 flex-col items-center justify-center">
+                <p className="text-[12px] font-semibold uppercase tracking-[0.3em] text-white/70">
+                  Enter PIN code
                 </p>
-              ) : media.length === 0 ? (
-                <div className="mt-6 rounded-lg border border-[#E7DFD2] bg-white p-10 text-center">
-                  <p className="text-sm text-[#5C5347]">
-                    Nothing here yet. Your photographer is still uploading.
-                    Check back soon.
-                  </p>
+                <div className="mt-6 flex gap-4" aria-hidden="true">
+                  {[0, 1, 2, 3].map((i) => (
+                    <span
+                      key={i}
+                      className={`h-4 w-4 rounded-full border-2 transition ${
+                        pin.length > i
+                          ? "border-white bg-white"
+                          : "border-white/50 bg-transparent"
+                      }`}
+                    />
+                  ))}
                 </div>
-              ) : (
-                <>
-                  {downloadingAll && (
-                    <p className="mt-4 text-center text-xs text-[#8A7D68]">
-                      Your browser may ask you to allow multiple downloads.
-                      That is normal.
+
+                <div className="mt-10 grid w-full max-w-[280px] grid-cols-3 gap-x-4 gap-y-5">
+                  {["1", "2", "3", "4", "5", "6", "7", "8", "9"].map((d) => (
+                    <button
+                      key={d}
+                      type="button"
+                      onClick={() => keypadPress(d)}
+                      className="flex h-16 w-16 items-center justify-center justify-self-center rounded-full bg-white/10 text-2xl font-medium text-white transition active:bg-white/25"
+                    >
+                      {d}
+                    </button>
+                  ))}
+                  <span />
+                  <button
+                    type="button"
+                    onClick={() => keypadPress("0")}
+                    className="flex h-16 w-16 items-center justify-center justify-self-center rounded-full bg-white/10 text-2xl font-medium text-white transition active:bg-white/25"
+                  >
+                    0
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => keypadPress("back")}
+                    aria-label="Delete"
+                    className="flex h-16 w-16 items-center justify-center justify-self-center rounded-full bg-white/10 text-xl text-white transition active:bg-white/25"
+                  >
+                    ⌫
+                  </button>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => attemptUnlock(pin)}
+                  disabled={unlocking || pin.length !== 4}
+                  style={{ color: "#17171A" }}
+                  className="mt-10 w-full max-w-[280px] rounded-full bg-white px-6 py-3.5 text-sm font-semibold tracking-[0.15em] transition hover:bg-zinc-200 disabled:opacity-40"
+                >
+                  {unlocking ? "CHECKING…" : "CONTINUE"}
+                </button>
+
+                {unlockError && (
+                  <p className="mt-4 text-center text-sm text-[#FCA5A5]">
+                    Wrong PIN — ask your photographer for the gallery PIN.
+                  </p>
+                )}
+                <p className="mt-8 max-w-[280px] text-center text-[11px] leading-relaxed text-white/45">
+                  By continuing further you consent to our Terms and
+                  Conditions and Privacy Policy.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ---- unlocked: albums / videos / favourites / more ---- */}
+        {slug && eventInfo && unlocked && !infoLoading && (
+          <div className="mx-auto flex min-h-[100dvh] w-full max-w-3xl flex-col pb-24">
+            <header className="relative px-4 pb-2 pt-6 text-center">
+              <h1
+                style={serif}
+                className="text-2xl font-semibold uppercase tracking-wide"
+              >
+                {eventInfo.name}
+              </h1>
+              <p className="mt-1 text-xs text-white/50">
+                by DKNOTT Photography
+              </p>
+              <button
+                onClick={copyLink}
+                aria-label="Copy gallery link"
+                className="absolute right-4 top-6 flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-lg text-white transition hover:bg-white/20"
+              >
+                {copied ? "✓" : "↗"}
+              </button>
+            </header>
+
+            {error && (
+              <p className="mx-4 mt-3 rounded-lg border border-red-400/30 bg-red-500/10 px-4 py-2.5 text-sm text-[#FCA5A5]">
+                {error}
+              </p>
+            )}
+
+            {/* albums */}
+            {view === "albums" && (
+              <main className="mt-4 space-y-4 px-4">
+                {mediaLoading ? (
+                  <p className="py-16 text-center text-sm text-[#A8A29A]">
+                    Loading your photos and videos…
+                  </p>
+                ) : folders.length === 0 ? (
+                  <div className="rounded-2xl bg-white/5 p-10 text-center">
+                    <p className="text-sm text-[#A8A29A]">
+                      Nothing here yet. Your photographer is still uploading.
+                      Check back soon.
                     </p>
-                  )}
-                  {showFolderChips && (
-                    <div className="mt-6 flex flex-wrap gap-2">
-                      {["All", ...folderBuckets].map((f) => (
-                        <button
-                          key={f}
-                          type="button"
-                          onClick={() => setFolderFilter(f)}
-                          style={
-                            activeFolder === f
-                              ? { color: "#FAF7F1" }
-                              : undefined
-                          }
-                          className={`rounded-full px-4 py-1.5 text-xs font-semibold transition ${
-                            activeFolder === f
-                              ? "bg-[#211D18]"
-                              : "bg-white text-[#5C5347] ring-1 ring-[#E7DFD2] hover:ring-[#211D18]"
-                          }`}
-                        >
-                          {f} (
-                          {f === "All"
-                            ? media.length
-                            : media.filter(
-                                (m) => (m.folder || "General") === f
-                              ).length}
-                          )
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                  <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-                    {visibleMedia.map((item) => (
+                  </div>
+                ) : (
+                  folders.map(([name, items]) => {
+                    const coverUrl = folderCover(items);
+                    const hasVideo = items.some(
+                      (m) => m.media_type === "video"
+                    );
+                    return (
                       <button
-                        key={item.id}
-                        onClick={() => setViewer(item)}
-                        className="group relative overflow-hidden rounded-md text-left ring-1 ring-[#E7DFD2] transition hover:ring-[#211D18]"
+                        key={name}
+                        onClick={() => {
+                          setOpenFolder(name);
+                          setView("folder");
+                        }}
+                        className="relative block w-full overflow-hidden rounded-2xl text-left"
+                        style={{ backgroundColor: CARD }}
                       >
-                        {item.media_type === "video" ? (
-                          <span className="relative block aspect-video w-full bg-[#211D18]">
-                            <video
-                              src={item.url}
-                              poster={item.display_url}
-                              preload="metadata"
-                              muted
-                              playsInline
-                              className="h-full w-full object-cover"
-                            />
-                            <span className="absolute inset-0 flex items-center justify-center">
-                              <span className="flex h-11 w-11 items-center justify-center rounded-full bg-black/70 text-lg text-white ring-1 ring-white/30">
-                                ▶
-                              </span>
-                            </span>
-                            <span className="absolute left-2 top-2 rounded-sm bg-black/70 px-2 py-0.5 text-xs font-medium text-white">
-                              Video
-                            </span>
-                          </span>
-                        ) : (
+                        {coverUrl && (
                           <img
-                            src={item.display_url || item.url}
-                            alt={item.filename}
-                            className="aspect-square w-full bg-white object-cover"
+                            src={coverUrl}
+                            alt={name}
+                            className="aspect-[16/10] w-full object-cover"
                             loading="lazy"
                           />
                         )}
-                        <span className="absolute inset-x-0 bottom-0 truncate bg-black/60 px-2 py-1 text-[11px] text-white opacity-0 transition group-hover:opacity-100">
-                          {item.filename}
-                        </span>
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/15 to-transparent" />
+                        <div className="absolute bottom-0 left-0 p-4">
+                          <p className="text-lg font-bold uppercase tracking-wide">
+                            {name}
+                          </p>
+                          <span className="mt-1.5 inline-block rounded-full bg-black/50 px-2.5 py-0.5 text-xs font-medium text-white/90">
+                            {countLabel(
+                              items.length,
+                              hasVideo ? "Item" : "Photo",
+                              hasVideo ? "Items" : "Photos"
+                            )}
+                          </span>
+                        </div>
                       </button>
-                    ))}
-                  </div>
-                </>
-              )}
-            </>
-          )}
-        </main>
+                    );
+                  })
+                )}
+              </main>
+            )}
 
-        <GalleryFooter />
+            {/* one folder's grid */}
+            {view === "folder" && openFolder && (
+              <FolderGrid
+                title={openFolder}
+                items={
+                  folders.find(([n]) => n === openFolder)?.[1] || []
+                }
+                onBack={() => {
+                  setOpenFolder(null);
+                  setView("albums");
+                }}
+                onOpen={(item, list) => openViewer(item, list)}
+              />
+            )}
 
-        {/* ---- viewer: photo or video ---- */}
+            {/* videos only */}
+            {view === "videos" && (
+              <FolderGrid
+                title="Videos"
+                items={videos}
+                onBack={() => setView("albums")}
+                onOpen={(item, list) => openViewer(item, list)}
+                emptyText="No videos in this gallery yet."
+              />
+            )}
+
+            {/* favourites */}
+            {view === "favs" && (
+              <FolderGrid
+                title="Favourites"
+                items={favItems}
+                onBack={() => setView("albums")}
+                onOpen={(item, list) => openViewer(item, list)}
+                emptyText="Tap the heart on any photo to keep it here."
+              />
+            )}
+
+            {/* more */}
+            {view === "more" && (
+              <main className="mt-6 space-y-3 px-4">
+                <button
+                  onClick={handleDownloadAll}
+                  disabled={downloadingAll || media.length === 0}
+                  style={{ color: "#17171A" }}
+                  className="w-full rounded-full bg-white px-6 py-3.5 text-sm font-semibold tracking-wide transition hover:bg-zinc-200 disabled:opacity-40"
+                >
+                  {downloadingAll ? "Downloading…" : "Download all photos"}
+                </button>
+                <button
+                  onClick={handleLock}
+                  className="w-full rounded-full border border-white/25 px-6 py-3.5 text-sm font-semibold text-[#F5F2EC] transition hover:border-white/60"
+                >
+                  Lock gallery
+                </button>
+                <p className="pt-4 text-center text-xs leading-relaxed text-[#A8A29A]">
+                  This is a private gallery, shared only with the couple by
+                  their photographer. Please keep your PIN to yourselves.
+                </p>
+              </main>
+            )}
+
+            {/* bottom tabs */}
+            <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-[#17171A]/95 backdrop-blur">
+              <div className="mx-auto grid max-w-3xl grid-cols-4">
+                {[
+                  ["albums", "Albums", "▦"],
+                  ["videos", "Videos", "▶"],
+                  ["favs", "Favourites", "♡"],
+                  ["more", "More", "⋯"],
+                ].map(([key, label, icon]) => (
+                  <button
+                    key={key}
+                    onClick={() => {
+                      setOpenFolder(null);
+                      setView(key);
+                    }}
+                    className={`flex flex-col items-center gap-0.5 py-2.5 text-[11px] font-medium transition ${
+                      view === key || (key === "albums" && view === "folder")
+                        ? "text-white"
+                        : "text-white/45"
+                    }`}
+                  >
+                    <span className="text-lg leading-none">{icon}</span>
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </nav>
+          </div>
+        )}
+
+        {/* ---- viewer ---- */}
         {viewer && (
-          <div
-            className="fixed inset-0 z-50 flex flex-col bg-black/95"
-            onClick={() => setViewer(null)}
-          >
-            <div
-              className="flex items-center justify-between px-4 py-3"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <p className="max-w-[70%] truncate text-sm text-zinc-300">
-                {viewer.filename}
-              </p>
+          <div className="fixed inset-0 z-50 flex flex-col bg-black">
+            <div className="flex items-center justify-between px-4 py-3">
               <button
-                onClick={() => setViewer(null)}
-                className="flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-lg text-white transition hover:bg-white/20"
+                onClick={() => {
+                  setViewer(null);
+                  setSheet(null);
+                }}
                 aria-label="Close"
+                className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-xl text-white transition hover:bg-white/20"
               >
                 ✕
               </button>
+              <p className="max-w-[55%] truncate text-sm text-zinc-300">
+                {viewer.item.filename}
+              </p>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => toggleFav(viewer.item.id)}
+                  aria-label="Favourite"
+                  className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-xl text-white transition hover:bg-white/20"
+                >
+                  {favs.includes(viewer.item.id) ? "♥" : "♡"}
+                </button>
+                <button
+                  onClick={() => setSheet("download")}
+                  aria-label="Download options"
+                  className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-xl text-white transition hover:bg-white/20"
+                >
+                  ↓
+                </button>
+              </div>
             </div>
-            <div
-              className="flex flex-1 items-center justify-center overflow-hidden px-4"
-              onClick={(e) => e.stopPropagation()}
-            >
-              {viewer.media_type === "video" ? (
+
+            <div className="relative flex flex-1 items-center justify-center overflow-hidden px-2">
+              {viewer.list.length > 1 && (
+                <>
+                  <button
+                    onClick={() => stepViewer(-1)}
+                    aria-label="Previous"
+                    className="absolute left-2 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-black/60 text-xl text-white transition hover:bg-black/80"
+                  >
+                    ‹
+                  </button>
+                  <button
+                    onClick={() => stepViewer(1)}
+                    aria-label="Next"
+                    className="absolute right-2 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-black/60 text-xl text-white transition hover:bg-black/80"
+                  >
+                    ›
+                  </button>
+                </>
+              )}
+              {viewer.item.media_type === "video" ? (
                 <video
-                  src={viewer.url}
-                  poster={viewer.display_url}
+                  key={viewer.item.id}
+                  src={viewer.item.url}
+                  poster={viewer.item.display_url}
                   controls
                   autoPlay
                   playsInline
-                  className="max-h-[85vh] max-w-full rounded-md shadow-2xl"
+                  className="max-h-full max-w-full rounded-md object-contain"
                 />
               ) : (
                 <img
-                  src={viewer.url}
-                  alt={viewer.filename}
-                  className="max-h-[85vh] max-w-full rounded-md object-contain shadow-2xl"
+                  key={viewer.item.id}
+                  src={viewer.item.url}
+                  alt={viewer.item.filename}
+                  className="max-h-full max-w-full rounded-md object-contain"
                 />
               )}
             </div>
-            <div
-              className="flex flex-wrap items-center justify-center gap-3 px-4 py-4"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <a
-                href={viewer.download_url || viewer.url}
-                download={viewer.filename || ""}
-                className="rounded-md bg-white px-5 py-2 text-sm font-semibold text-[#211D18] transition hover:bg-zinc-200"
+
+            {sheet === "download" && (
+              <div
+                className="absolute inset-0 z-10 flex items-end bg-black/60"
+                onClick={() => setSheet(null)}
               >
-                Download
-              </a>
-            </div>
+                <div
+                  className="w-full rounded-t-2xl p-5 pb-8"
+                  style={{ backgroundColor: CARD }}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <p className="text-center text-sm font-semibold text-white/80">
+                    Download
+                  </p>
+                  <button
+                    onClick={() => downloadItem(viewer.item, true)}
+                    className="mt-4 w-full rounded-full bg-white px-6 py-3.5 text-sm font-semibold transition hover:bg-zinc-200"
+                    style={{ color: "#17171A" }}
+                  >
+                    Download Original
+                  </button>
+                  <button
+                    onClick={() => downloadItem(viewer.item, false)}
+                    className="mt-2.5 w-full rounded-full border border-white/25 px-6 py-3.5 text-sm font-semibold text-white transition hover:border-white/60"
+                  >
+                    Download Optimized
+                  </button>
+                  <button
+                    onClick={() => setSheet(null)}
+                    className="mt-2.5 w-full rounded-full bg-white/10 px-6 py-3 text-sm font-medium text-white/80 transition hover:bg-white/20"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
     </>
+  );
+}
+
+function FolderGrid({ title, items, onBack, onOpen, emptyText }) {
+  return (
+    <main className="mt-2 px-3">
+      <div className="flex items-center gap-3 px-1 pb-3 pt-2">
+        <button
+          onClick={onBack}
+          aria-label="Back to albums"
+          className="flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-lg text-white transition hover:bg-white/20"
+        >
+          ←
+        </button>
+        <h2 className="text-lg font-bold uppercase tracking-wide">{title}</h2>
+        <span className="rounded-full bg-white/10 px-2.5 py-0.5 text-xs text-white/80">
+          {countLabel(items.length, "Item", "Items")}
+        </span>
+      </div>
+      {items.length === 0 ? (
+        <p className="py-16 text-center text-sm text-[#A8A29A]">
+          {emptyText || "Nothing here yet."}
+        </p>
+      ) : (
+        <div className="grid grid-cols-3 gap-1">
+          {items.map((item) => (
+            <button
+              key={item.id}
+              onClick={() => onOpen(item, items)}
+              className="group relative overflow-hidden rounded-md bg-white/5"
+            >
+              {item.media_type === "video" ? (
+                <span className="relative block aspect-square w-full">
+                  <video
+                    src={item.url}
+                    poster={item.display_url}
+                    preload="metadata"
+                    muted
+                    playsInline
+                    className="h-full w-full object-cover"
+                  />
+                  <span className="absolute inset-0 flex items-center justify-center">
+                    <span className="flex h-9 w-9 items-center justify-center rounded-full bg-black/70 text-sm text-white">
+                      ▶
+                    </span>
+                  </span>
+                </span>
+              ) : (
+                <img
+                  src={item.display_url || item.url}
+                  alt={item.filename}
+                  className="aspect-square w-full object-cover"
+                  loading="lazy"
+                />
+              )}
+            </button>
+          ))}
+        </div>
+      )}
+    </main>
   );
 }
