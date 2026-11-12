@@ -683,23 +683,28 @@ export default function CoupleGallery() {
                   ["videos", "Videos", "▶"],
                   ["favs", "Favourites", "♡"],
                   ["more", "More", "⋯"],
-                ].map(([key, label, icon]) => (
+                ].map(([key, label, icon]) => {
+                  const active =
+                    view === key || (key === "albums" && view === "folder");
+                  return (
                   <button
                     key={key}
                     onClick={() => {
                       setOpenFolder(null);
                       setView(key);
                     }}
-                    className={`flex flex-col items-center gap-0.5 py-2.5 text-[11px] font-medium transition ${
-                      view === key || (key === "albums" && view === "folder")
-                        ? "text-white"
-                        : "text-white/45"
-                    }`}
+                    style={{
+                      color: active
+                        ? "#FFFFFF"
+                        : "rgba(255,255,255,0.45)",
+                    }}
+                    className="flex flex-col items-center gap-0.5 py-2.5 text-[11px] font-medium transition"
                   >
                     <span className="text-lg leading-none">{icon}</span>
                     {label}
                   </button>
-                ))}
+                  );
+                })}
               </div>
             </nav>
           </div>
