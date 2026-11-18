@@ -17,6 +17,10 @@ export default function Navbar() {
     router.push("/");
   };
 
+  // Admins don't use the guest gallery, so hide its link for them.
+  // Guests and logged-out visitors still see it.
+  const isAdmin = user?.role === "admin";
+
   return (
     <nav className="sticky inset-x-0 top-0 z-40 border-b border-white/10 bg-abyss/60 backdrop-blur-xl">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6">
@@ -31,6 +35,11 @@ export default function Navbar() {
           <Link href="/" className="transition hover:text-bio-cyan">
             Home
           </Link>
+          {!isAdmin && (
+            <Link href="/gallery" className="transition hover:text-bio-cyan">
+              My Gallery
+            </Link>
+          )}
         </div>
 
         <div className="flex items-center gap-3">
