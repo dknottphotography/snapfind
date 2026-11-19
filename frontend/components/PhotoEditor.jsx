@@ -60,6 +60,7 @@ export default function PhotoEditor({ photo, onClose, onSave, saving }) {
           <h3 className="font-semibold text-ink">Edit photo</h3>
           <button
             onClick={onClose}
+            aria-label="Close"
             className="rounded-md px-2 py-1 text-inkdim transition hover:bg-[#17122e]/5 hover:text-ink"
           >
             ✕
@@ -82,14 +83,14 @@ export default function PhotoEditor({ photo, onClose, onSave, saving }) {
           <button
             onClick={() => setRotation((r) => r - 90)}
             disabled={!img}
-            className="btn-outline px-4 py-2 text-sm"
+            className="btn-outline px-4 py-2 text-sm disabled:opacity-40"
           >
             ⟲ Rotate left
           </button>
           <button
             onClick={() => setRotation((r) => r + 90)}
             disabled={!img}
-            className="btn-outline px-4 py-2 text-sm"
+            className="btn-outline px-4 py-2 text-sm disabled:opacity-40"
           >
             ⟳ Rotate right
           </button>

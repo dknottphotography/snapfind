@@ -806,7 +806,7 @@ export default function CoupleGallery() {
                   </button>
                   <button
                     onClick={() => downloadItem(viewer.item, false)}
-                    className="mt-2.5 w-full rounded-full border border-white/25 px-6 py-3.5 text-sm font-semibold text-white transition hover:border-white/60"
+                    className="mt-2.5 w-full rounded-full border border-white/25 px-6 py-3.5 text-sm font-semibold text-[#F5F2EC] transition hover:border-white/60"
                   >
                     Download Optimized
                   </button>

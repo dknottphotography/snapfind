@@ -491,7 +491,7 @@ export default function GalleryPage() {
                         if (f) handleSelfieUpload(f);
                         e.target.value = "";
                       }}
-                      className="text-sm text-inkdim file:mr-3 file:rounded-xl file:border-0 file:bg-white/10 file:px-4 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-white/20 disabled:opacity-50"
+                      className="text-sm text-inkdim file:mr-3 file:rounded-xl file:border-0 file:bg-[#0e7490] file:px-4 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-[#0f766e] disabled:opacity-50"
                     />
                   </div>
                   {uploadingSelfie && (

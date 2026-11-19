@@ -743,6 +743,7 @@ export default function AdminPage() {
                           }}
                           className="ml-2 rounded-md px-2 py-1 text-inkdim transition hover:bg-red-50 hover:text-red-700"
                           title="Delete event"
+                          aria-label="Delete event"
                         >
                           <IconTrash size={15} />
                         </button>
@@ -864,14 +865,14 @@ export default function AdminPage() {
                               </span>
                               <button
                                 onClick={() => handleDeletePhoto(p.id, p.filename)}
-                                className="absolute right-2 top-2 rounded-md bg-black/70 px-2 py-1 text-xs font-medium text-white opacity-0 transition hover:bg-red-800 group-hover:opacity-100"
+                                className="absolute right-2 top-2 rounded-md bg-black/70 px-2 py-1 text-xs font-medium text-white opacity-0 transition hover:bg-red-800 group-hover:opacity-100 max-sm:opacity-100 focus-visible:opacity-100"
                                 title="Delete photo"
                               >
                                 Delete
                               </button>
                               <button
                                 onClick={() => setEditingPhoto(p)}
-                                className="absolute right-2 top-10 rounded-md bg-black/70 px-2 py-1 text-xs font-medium text-white opacity-0 transition hover:bg-black/90 group-hover:opacity-100"
+                                className="absolute right-2 top-10 rounded-md bg-black/70 px-2 py-1 text-xs font-medium text-white opacity-0 transition hover:bg-black/90 group-hover:opacity-100 max-sm:opacity-100 focus-visible:opacity-100"
                                 title="Edit photo (rotate / flip)"
                               >
                                 Edit
@@ -1197,9 +1198,17 @@ export default function AdminPage() {
                             onClick={() => setGalleryFolderFilter(f)}
                             className={`rounded-full px-3.5 py-1.5 text-xs font-semibold transition ${
                               activeFolderFilter === f
-                                ? "bg-[#0B3B34] text-white"
+                                ? "bg-[#0F766E] text-white"
                                 : "bg-white text-ink ring-1 ring-[#17122e]/15 hover:bg-[#F5F1E8]"
                             }`}
+                            // Pin the label white inline: the light theme
+                            // turns .text-white dark, which made the old
+                            // near-black chip unreadable.
+                            style={
+                              activeFolderFilter === f
+                                ? { color: "#ffffff" }
+                                : undefined
+                            }
                           >
                             {f} (
                             {f === "All"
@@ -1248,7 +1257,7 @@ export default function AdminPage() {
                             </span>
                             <button
                               onClick={() => handleDeleteGalleryItem(m)}
-                              className="absolute right-2 top-2 rounded-md bg-black/70 px-2 py-1 text-xs font-medium text-white opacity-0 transition hover:bg-red-800 group-hover:opacity-100"
+                              className="absolute right-2 top-2 rounded-md bg-black/70 px-2 py-1 text-xs font-medium text-white opacity-0 transition hover:bg-red-800 group-hover:opacity-100 max-sm:opacity-100 focus-visible:opacity-100"
                               title="Delete from gallery"
                             >
                               Delete
