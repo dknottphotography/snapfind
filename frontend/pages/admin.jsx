@@ -876,9 +876,6 @@ export default function AdminPage() {
                               >
                                 Edit
                               </button>
-                              <p className="truncate bg-[#17122e]/85 px-2 py-1 text-[11px] text-white/75">
-                                {p.filename}
-                              </p>
                             </div>
                           ))}
                         </div>
@@ -1256,10 +1253,6 @@ export default function AdminPage() {
                             >
                               Delete
                             </button>
-                            <p className="truncate bg-[#17122e]/85 px-2 py-1 text-[11px] text-white/75">
-                              {m.filename}
-                              {m.folder ? ` · ${m.folder}` : ""}
-                            </p>
                           </div>
                         ))}
                       </div>
