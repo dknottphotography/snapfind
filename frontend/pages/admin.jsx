@@ -30,6 +30,124 @@ import {
   resolveUrl,
 } from "../lib/api";
 
+// Custom folder menu replacing the native <select>: a styled button +
+// popover list in the site's own look, with keyboard support and
+// close-on-outside-click. "Custom…" stays the last item, separated
+// by a divider, and still reveals the custom-name input.
+function FolderMenu({ value, options, onChange }) {
+  const [open, setOpen] = useState(false);
+  const [focusIdx, setFocusIdx] = useState(0);
+  const wrapRef = useRef(null);
+  const buttonRef = useRef(null);
+  const itemRefs = useRef([]);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false);
+    };
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [open ]);
+
+  const openMenu = (idx) => {
+    setFocusIdx(idx ?? options.indexOf(value));
+    setOpen(true);
+  };
+  const choose = (opt) => {
+    onChange(opt);
+    setOpen(false);
+    buttonRef.current?.focus();
+  };
+  const onButtonKeyDown = (e) => {
+    if (e.key === "ArrowDown" || e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      openMenu(e.key === "ArrowDown" ? 0 : undefined);
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      openMenu(options.length - 1);
+    }
+  };
+  const onItemKeyDown = (e, idx) => {
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      const next = (idx + 1) % options.length;
+      setFocusIdx(next);
+      itemRefs.current[next]?.focus();
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      const prev = (idx - 1 + options.length) % options.length;
+      setFocusIdx(prev);
+      itemRefs.current[prev]?.focus();
+    } else if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      choose(options[idx]);
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      setOpen(false);
+      buttonRef.current?.focus();
+    } else if (e.key === "Tab") {
+      setOpen(false);
+    }
+  };
+
+  return (
+    <div ref={wrapRef} className="relative">
+      <button
+        type="button"
+        ref={buttonRef}
+        id="gallery-folder-menu-button"
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        onClick={() => (open ? setOpen(false) : openMenu())}
+        onKeyDown={onButtonKeyDown}
+        className="field flex min-w-[11rem] items-center justify-between gap-3 px-3 py-2 text-sm"
+      >
+        <span className="font-medium">{value}</span>
+        <span
+          aria-hidden="true"
+          className={`text-xs text-inkdim transition-transform ${open ? "rotate-180" : ""}`}
+        >
+          ▾
+        </span>
+      </button>
+      {open && (
+        <ul
+          role="listbox"
+          aria-label="Upload into folder"
+          className="absolute left-0 z-30 mt-1 max-h-72 w-full min-w-[11rem] overflow-auto rounded-xl border border-[#17122e]/15 bg-white py-1 shadow-xl"
+        >
+          {options.map((opt, idx) => (
+            <li
+              key={opt}
+              role="presentation"
+              className={opt === "Custom…" ? "border-t border-[#17122e]/10" : ""}
+            >
+              <button
+                type="button"
+                role="option"
+                aria-selected={opt === value}
+                ref={(el) => (itemRefs.current[idx] = el)}
+                onClick={() => choose(opt)}
+                onKeyDown={(e) => onItemKeyDown(e, idx)}
+                onMouseEnter={() => setFocusIdx(idx)}
+                className={`flex w-full items-center justify-between gap-3 px-3 py-2 text-left text-sm transition ${
+                  opt === value
+                    ? "font-semibold text-[#0f766e]"
+                    : "text-ink"
+                } ${focusIdx === idx ? "bg-[#F5F1E8]" : ""}`}
+              >
+                <span>{opt}</span>
+                {opt === value && <span aria-hidden="true">✓</span>}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 export default function AdminPage() {
   const router = useRouter();
   const [me, setMe] = useState(null);
@@ -1106,23 +1224,16 @@ export default function AdminPage() {
                     <div className="mt-4">
                       <div className="mb-3 flex flex-wrap items-center gap-2">
                         <label
-                          htmlFor="gallery-folder-select"
+                          htmlFor="gallery-folder-menu-button"
                           className="text-sm font-medium text-ink"
                         >
                           Upload into folder
                         </label>
-                        <select
-                          id="gallery-folder-select"
+                        <FolderMenu
                           value={galleryFolder}
-                          onChange={(e) => setGalleryFolder(e.target.value)}
-                          className="field px-3 py-2 text-sm"
-                        >
-                          {GALLERY_FOLDERS.map((f) => (
-                            <option key={f} value={f}>
-                              {f}
-                            </option>
-                          ))}
-                        </select>
+                          options={GALLERY_FOLDERS}
+                          onChange={setGalleryFolder}
+                        />
                         {galleryFolder === "Custom…" && (
                           <input
                             value={galleryFolderCustom}
