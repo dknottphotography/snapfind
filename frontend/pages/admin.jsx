@@ -1075,41 +1075,42 @@ export default function AdminPage() {
 
               {selectedGallery && (
                 <>
-                  {/* ticket card */}
-                  <div className="flex flex-col overflow-visible rounded-2xl bg-[#0B3B34] shadow-[0_2px_10px_rgba(11,59,52,0.25)] sm:flex-row">
+                  {/* ticket card — light, professional: white card, ink text,
+                      teal accents, same ticket shape (notches + dashed stub) */}
+                  <div className="flex flex-col overflow-visible rounded-2xl border border-[#17122e]/10 bg-white shadow-[0_1px_3px_rgba(23,18,46,0.08)] sm:flex-row">
                     <div className="min-w-0 flex-1 p-6 sm:p-7">
                       <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-                        <h2 className="text-[26px] font-bold leading-tight text-[#F5FAF7]">
+                        <h2 className="text-[26px] font-bold leading-tight text-ink">
                           {selectedGallery.name}
                         </h2>
                       </div>
                       <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5">
                         {selectedGallery.has_passcode ? (
-                          <span className="rounded-full bg-[rgba(255,255,255,0.14)] px-2.5 py-0.5 text-xs font-semibold text-[#A9E5CB]">
+                          <span className="rounded-full bg-[#0f766e]/10 px-2.5 py-0.5 text-xs font-semibold text-[#0f766e]">
                             PIN set
                           </span>
                         ) : (
-                          <span className="rounded-full bg-[rgba(251,191,36,0.18)] px-2.5 py-0.5 text-xs font-semibold text-[#FCD34D]">
+                          <span className="rounded-full bg-[#fef3c7] px-2.5 py-0.5 text-xs font-semibold text-[#92400e]">
                             No PIN yet
                           </span>
                         )}
-                        <span className="text-[13px] text-[rgba(255,255,255,0.6)]">
+                        <span className="text-[13px] text-inkdim">
                           {galleryMedia.length} file{galleryMedia.length === 1 ? "" : "s"} on Cloudinary
                         </span>
                       </div>
 
                       {selectedGallery.gallery_url && (
                         <>
-                          <p className="mt-6 text-[13px] font-medium text-[rgba(255,255,255,0.6)]">
+                          <p className="mt-6 text-[13px] font-medium text-inkdim">
                             Gallery link
                           </p>
                           <div className="mt-1.5 flex gap-2">
-                            <p className="min-w-0 flex-1 truncate rounded-lg bg-[rgba(0,0,0,0.3)] px-3.5 py-2.5 text-sm text-[#EAF4EF]">
+                            <p className="min-w-0 flex-1 truncate rounded-lg border border-[#17122e]/10 bg-[#FAF7F0] px-3.5 py-2.5 text-sm text-ink">
                               {selectedGallery.gallery_url}
                             </p>
                             <button
                               onClick={() => copyGalleryLink(selectedGallery.gallery_url)}
-                              className="shrink-0 rounded-lg border border-[rgba(255,255,255,0.3)] px-4 py-2.5 text-sm font-medium text-[#F5FAF7] transition hover:border-[rgba(255,255,255,0.55)]"
+                              className="btn-outline shrink-0 px-4 py-2.5 text-sm"
                             >
                               {galleryCopied ? "Copied" : "Copy"}
                             </button>
@@ -1119,7 +1120,7 @@ export default function AdminPage() {
                               href={`https://wa.me/?text=${encodeURIComponent(`Hi! Your private photo gallery is ready: ${selectedGallery.gallery_url}`)}`}
                               target="_blank"
                               rel="noreferrer"
-                              className="rounded-lg bg-[#C4EBDA] px-4 py-2.5 text-sm font-semibold text-[#0B3B34] transition hover:bg-[#AEE2CC]"
+                              className="btn-teal px-4 py-2.5 text-sm"
                             >
                               Send on WhatsApp
                             </a>
@@ -1127,7 +1128,7 @@ export default function AdminPage() {
                               href={selectedGallery.gallery_url}
                               target="_blank"
                               rel="noreferrer"
-                              className="rounded-lg border border-[rgba(255,255,255,0.3)] px-4 py-2.5 text-sm font-medium text-[#F5FAF7] transition hover:border-[rgba(255,255,255,0.55)]"
+                              className="btn-outline px-4 py-2.5 text-sm"
                             >
                               Preview as couple
                             </a>
@@ -1138,7 +1139,7 @@ export default function AdminPage() {
                       <form onSubmit={handleSavePasscode} className="mt-6">
                         <label
                           htmlFor="gallery-passcode"
-                          className="text-[13px] font-medium text-[rgba(255,255,255,0.65)]"
+                          className="text-[13px] font-medium text-inkdim"
                         >
                           Gallery PIN — 4 digits (changing it signs the couple
                           out immediately)
@@ -1156,20 +1157,20 @@ export default function AdminPage() {
                             inputMode="numeric"
                             maxLength={4}
                             autoComplete="off"
-                            className="min-w-0 flex-1 rounded-lg border border-[rgba(255,255,255,0.25)] bg-transparent px-3.5 py-2.5 text-sm tracking-[0.3em] text-[#F5FAF7] outline-none transition placeholder:text-[rgba(255,255,255,0.4)] focus:border-[rgba(255,255,255,0.55)]"
+                            className="field min-w-0 flex-1 px-3.5 py-2.5 text-sm tracking-[0.3em]"
                           />
                           <button
                             type="submit"
                             disabled={passcodeSaving || !passcodeInput.trim()}
-                            className="shrink-0 rounded-lg bg-[#C4EBDA] px-4 py-2.5 text-sm font-semibold text-[#0B3B34] transition hover:bg-[#AEE2CC] disabled:opacity-50"
+                            className="btn-teal shrink-0 px-4 py-2.5 text-sm disabled:opacity-50"
                           >
                             {passcodeSaving ? "…" : "Change"}
                           </button>
                         </div>
                         {passcodeNote ? (
-                          <p className="mt-2 text-[13px] text-[#9ADBBE]">{passcodeNote}</p>
+                          <p className="mt-2 text-[13px] text-[#0f766e]">{passcodeNote}</p>
                         ) : (
-                          <p className="mt-2 text-[13px] text-[rgba(255,255,255,0.55)]">
+                          <p className="mt-2 text-[13px] text-inkdim">
                             {selectedGallery.has_passcode
                               ? "Current PIN: ••••. Send it in a different message from the link."
                               : "No PIN yet — the gallery stays locked until you set one."}
@@ -1179,7 +1180,7 @@ export default function AdminPage() {
                     </div>
 
                     {/* QR stub */}
-                    <div className="relative flex flex-col items-center border-t border-dashed border-[rgba(255,255,255,0.25)] px-6 py-6 sm:w-[248px] sm:shrink-0 sm:border-l sm:border-t-0 sm:py-7">
+                    <div className="relative flex flex-col items-center border-t border-dashed border-[#17122e]/15 px-6 py-6 sm:w-[248px] sm:shrink-0 sm:border-l sm:border-t-0 sm:py-7">
                       <span className="absolute -top-3 left-1/2 hidden h-6 w-6 -translate-x-1/2 rounded-full bg-[#EDF2EE] sm:block" />
                       <span className="absolute -bottom-3 left-1/2 hidden h-6 w-6 -translate-x-1/2 rounded-full bg-[#EDF2EE] sm:block" />
                       <span className="absolute -left-3 top-1/2 h-6 w-6 -translate-y-1/2 rounded-full bg-[#EDF2EE] sm:hidden" />
@@ -1189,22 +1190,22 @@ export default function AdminPage() {
                           <img
                             src={galleryQrUrl(selectedGallery.slug)}
                             alt={`QR code for ${selectedGallery.name} gallery`}
-                            className="h-40 w-40 rounded-xl bg-white p-2"
+                            className="h-40 w-40 rounded-xl border border-[#17122e]/10 bg-white p-2"
                             loading="lazy"
                           />
                           <a
                             href={galleryQrUrl(selectedGallery.slug)}
                             download={`${selectedGallery.slug}-gallery-qr.png`}
-                            className="mt-4 rounded-lg border border-[rgba(255,255,255,0.3)] px-4 py-2 text-sm font-medium text-[#F5FAF7] transition hover:border-[rgba(255,255,255,0.55)]"
+                            className="btn-outline mt-4 px-4 py-2 text-sm"
                           >
                             Download QR
                           </a>
-                          <p className="mt-3 text-center text-[13px] leading-relaxed text-[rgba(255,255,255,0.6)]">
+                          <p className="mt-3 text-center text-[13px] leading-relaxed text-inkdim">
                             Couples can scan this instead of opening the link.
                           </p>
                         </>
                       ) : (
-                        <p className="text-center text-[13px] text-[rgba(255,255,255,0.6)]">
+                        <p className="text-center text-[13px] text-inkdim">
                           Set a passcode to activate the link and QR code.
                         </p>
                       )}
