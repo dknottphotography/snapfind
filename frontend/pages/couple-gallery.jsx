@@ -89,7 +89,15 @@ function PinBoxes({ value, onChange, disabled }) {
             refs.current[Math.min(text.length, 3)]?.focus();
           }}
           onFocus={(e) => e.target.select()}
-          className="h-14 w-12 rounded-xl border border-white/15 bg-white/5 text-center text-2xl font-semibold text-white outline-none transition focus:border-white/50 disabled:opacity-40 sm:h-16 sm:w-14"
+          // Explicit rgba colours, NOT border-white/*/bg-white/*: the
+          // light-theme override in globals.css turns those into faint
+          // dark tints, which made the boxes invisible on this dark page
+          // and the typed digit dark-on-dark.
+          className={`h-14 w-12 rounded-xl border text-center text-2xl font-semibold text-[#F5F2EC] outline-none transition focus:border-[rgba(255,255,255,0.6)] disabled:opacity-40 sm:h-16 sm:w-14 ${
+            d
+              ? "border-[rgba(255,255,255,0.45)] bg-[rgba(255,255,255,0.12)]"
+              : "border-[rgba(255,255,255,0.25)] bg-[rgba(255,255,255,0.06)]"
+          }`}
         />
       ))}
     </div>
@@ -476,13 +484,13 @@ export default function CoupleGallery() {
                     setCodeError("");
                   }}
                   placeholder="Paste your gallery link or event code"
-                  className="w-full rounded-xl border border-white/15 bg-white/5 px-4 py-3.5 text-sm text-[#F5F2EC] outline-none transition placeholder:text-[#A8A29A] focus:border-white/40"
+                  className="w-full rounded-xl border border-[rgba(255,255,255,0.25)] bg-[rgba(255,255,255,0.06)] px-4 py-3.5 text-sm text-[#F5F2EC] outline-none transition placeholder:text-[#A8A29A] focus:border-[rgba(255,255,255,0.6)]"
                 />
                 <button
                   type="submit"
                   disabled={!codeInput.trim()}
-                  className="mt-3 w-full rounded-xl px-6 py-3.5 text-sm font-semibold tracking-[0.12em] text-white transition hover:opacity-90 disabled:opacity-40"
-                  style={{ backgroundColor: TEAL }}
+                  className="mt-3 w-full rounded-xl px-6 py-3.5 text-sm font-semibold tracking-[0.12em] transition hover:opacity-90 disabled:opacity-40"
+                  style={{ backgroundColor: TEAL, color: "#ffffff" }}
                 >
                   ENTER
                 </button>
@@ -549,8 +557,8 @@ export default function CoupleGallery() {
               </p>
               <button
                 onClick={() => setView("pin")}
-                className="mt-6 w-36 rounded-full px-6 py-3 text-sm font-semibold tracking-[0.15em] text-white transition hover:opacity-90"
-                style={{ backgroundColor: TEAL }}
+                className="mt-6 w-36 rounded-full px-6 py-3 text-sm font-semibold tracking-[0.15em] transition hover:opacity-90"
+                style={{ backgroundColor: TEAL, color: "#ffffff" }}
               >
                 ENTER
               </button>
@@ -606,8 +614,8 @@ export default function CoupleGallery() {
                   type="button"
                   onClick={() => attemptUnlock(pin)}
                   disabled={unlocking || pin.length !== 4}
-                  className="mt-7 w-full rounded-xl px-6 py-3.5 text-sm font-semibold tracking-[0.12em] text-white transition hover:opacity-90 disabled:opacity-40 sm:max-w-[320px]"
-                  style={{ backgroundColor: TEAL }}
+                  className="mt-7 w-full rounded-xl px-6 py-3.5 text-sm font-semibold tracking-[0.12em] transition hover:opacity-90 disabled:opacity-40 sm:max-w-[320px]"
+                  style={{ backgroundColor: TEAL, color: "#ffffff" }}
                 >
                   {unlocking ? "CHECKING…" : "CONTINUE"}
                 </button>
