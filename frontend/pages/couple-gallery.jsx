@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/router";
 import Head from "next/head";
 import {
@@ -11,22 +11,89 @@ import {
 } from "../lib/api";
 
 // STANDALONE PAGE — separate from the SnapFind website.
-// Dark, cinematic couple's gallery in the style of the studio's
-// reference experience (dknottphotography.ve.ai): full-bleed hero
-// cover -> 4-digit PIN keypad -> folder cards (Engagement, Haldi,
-// Wedding, ...) -> photo grid -> viewer with Original / Optimized
-// download choices. No SnapFind branding, no links back to SnapFind.
+// Dark, premium couple's gallery in the style of the photographer's
+// reference experience (Pic-Time-style): split-screen entry / PIN
+// (brand panel + rotating photo hero) -> 4 separate PIN boxes ->
+// album cards with the cover on top and the name below -> photo grid
+// -> viewer with Original / Optimized download choices.
+// No SnapFind branding, no links back to SnapFind.
 // Flow: open private link -> ENTER -> PIN -> albums.
 // No account, no signup.
 
 const serif = { fontFamily: "'Cormorant Garamond', Georgia, 'Times New Roman', serif" };
 const INK = "#17171A";
-const CARD = "#232327";
-const MUTED = "#A8A29A";
+const SURFACE = "#1E1E21";
+const TEAL = "#0F766E";
 const FAV_KEY = (slug) => `snapfind:favs:${slug}`;
+
+// Rotating headlines on the entry / PIN hero panels.
+const HERO_LINES = [
+  "Your moments, beautifully kept.",
+  "Every frame, yours to keep.",
+  "A private gallery, made for two.",
+];
 
 function countLabel(n, singular = "Photo", plural = "Photos") {
   return `${n} ${n === 1 ? singular : plural}`;
+}
+
+// Four separate PIN boxes (reference-style OTP entry): typing fills
+// left to right, Backspace moves back, pasting 4 digits fills all.
+function PinBoxes({ value, onChange, disabled }) {
+  const refs = useRef([]);
+  const digits = [0, 1, 2, 3].map((i) => value[i] || "");
+  const setAt = (i, d) => {
+    const next = (value + "    ").slice(0, 4).split("");
+    next[i] = d;
+    onChange(next.join("").replace(/ /g, "").slice(0, 4));
+  };
+  return (
+    <div className="flex gap-3">
+      {digits.map((d, i) => (
+        <input
+          key={i}
+          ref={(el) => (refs.current[i] = el)}
+          value={d}
+          disabled={disabled}
+          inputMode="numeric"
+          autoComplete="one-time-code"
+          aria-label={`PIN digit ${i + 1}`}
+          maxLength={1}
+          onChange={(e) => {
+            const ch = e.target.value.replace(/\D/g, "").slice(-1);
+            if (!ch) return;
+            setAt(i, ch);
+            if (i < 3) refs.current[i + 1]?.focus();
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Backspace") {
+              e.preventDefault();
+              if (digits[i]) {
+                setAt(i, "");
+              } else if (i > 0) {
+                refs.current[i - 1]?.focus();
+                setAt(i - 1, "");
+              }
+            } else if (e.key === "ArrowLeft" && i > 0) {
+              refs.current[i - 1]?.focus();
+            } else if (e.key === "ArrowRight" && i < 3) {
+              refs.current[i + 1]?.focus();
+            }
+          }}
+          onPaste={(e) => {
+            e.preventDefault();
+            const text = (e.clipboardData.getData("text") || "")
+              .replace(/\D/g, "")
+              .slice(0, 4);
+            if (text) onChange(text);
+            refs.current[Math.min(text.length, 3)]?.focus();
+          }}
+          onFocus={(e) => e.target.select()}
+          className="h-14 w-12 rounded-xl border border-white/15 bg-white/5 text-center text-2xl font-semibold text-white outline-none transition focus:border-white/50 disabled:opacity-40 sm:h-16 sm:w-14"
+        />
+      ))}
+    </div>
+  );
 }
 
 export default function CoupleGallery() {
@@ -154,10 +221,24 @@ export default function CoupleGallery() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pin, view]);
 
-  // Physical keyboard support on the PIN screen.
+  // Rotating headline on the entry / PIN hero panels.
+  const [heroLine, setHeroLine] = useState(0);
+  useEffect(() => {
+    if (view !== "pin" && slug) return;
+    const t = setInterval(
+      () => setHeroLine((i) => (i + 1) % HERO_LINES.length),
+      4500
+    );
+    return () => clearInterval(t);
+  }, [view, slug]);
+
+  // Physical keyboard support on the PIN screen when no box is focused
+  // (the boxes handle their own keys once focused).
   useEffect(() => {
     if (view !== "pin") return;
     const onKey = (e) => {
+      const tag = e.target && e.target.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA") return;
       if (/^[0-9]$/.test(e.key)) {
         setPin((p) => (p.length < 4 ? p + e.key : p));
         setUnlockError("");
@@ -282,16 +363,6 @@ export default function CoupleGallery() {
     setViewer({ item: viewer.list[next], list: viewer.list });
   };
 
-  const keypadPress = (key) => {
-    if (unlocking) return;
-    if (key === "back") {
-      setPin((p) => p.slice(0, -1));
-    } else if (pin.length < 4) {
-      setPin((p) => p + key);
-      setUnlockError("");
-    }
-  };
-
   return (
     <>
       <Head>
@@ -336,39 +407,90 @@ export default function CoupleGallery() {
           </div>
         )}
 
-        {/* ---- no link yet: entry form ---- */}
+        {/* ---- no link yet: split-screen entry ---- */}
         {!slug && !infoLoading && (
-          <div className="mx-auto flex min-h-[100dvh] max-w-md flex-col items-center justify-center px-6 py-14 text-center">
-            <p style={serif} className="text-4xl font-semibold sm:text-5xl">
-              Your private gallery
-            </p>
-            <p className="mt-4 leading-relaxed text-[#A8A29A]">
-              Your photographer sent you a private link. Paste it below,
-              or type your event code, then enter the PIN to open your
-              photos and videos.
-            </p>
-            <form onSubmit={handleOpenGallery} className="mt-8 w-full">
-              <input
-                value={codeInput}
-                onChange={(e) => {
-                  setCodeInput(e.target.value);
-                  setCodeError("");
-                }}
-                placeholder="Paste your gallery link or event code"
-                className="w-full rounded-full border border-white/15 bg-white/5 px-5 py-3.5 text-center text-sm text-[#F5F2EC] outline-none transition placeholder:text-[#A8A29A] focus:border-white/40"
+          <div className="flex min-h-[100dvh] flex-col sm:flex-row">
+            {/* visual panel */}
+            <div
+              className="relative flex h-60 shrink-0 flex-col justify-end overflow-hidden px-6 pb-8 sm:h-auto sm:flex-1 sm:px-10 sm:pb-12"
+              style={{
+                background:
+                  "radial-gradient(110% 90% at 20% 0%, #1E3A34 0%, #17171A 55%, #101012 100%)",
+              }}
+            >
+              <div
+                aria-hidden="true"
+                className="pointer-events-none absolute -right-16 -top-16 h-64 w-64 rounded-full opacity-25 blur-3xl"
+                style={{ background: TEAL }}
               />
-              <button
-                type="submit"
-                disabled={!codeInput.trim()}
-                style={{ color: "#17171A" }}
-                className="mt-3 w-full rounded-full bg-white px-6 py-3.5 text-sm font-semibold tracking-wide transition hover:bg-zinc-200 disabled:opacity-40"
+              <p className="relative text-[11px] font-semibold uppercase tracking-[0.3em] text-white/50">
+                DKNOTT Photography
+              </p>
+              <h2
+                style={serif}
+                className="relative mt-3 max-w-md text-3xl font-semibold leading-snug sm:text-4xl"
               >
-                ENTER
-              </button>
-            </form>
-            {codeError && (
-              <p className="mt-3 text-sm text-[#F87171]">{codeError}</p>
-            )}
+                {HERO_LINES[heroLine]}
+              </h2>
+              <div className="relative mt-5 flex gap-2" aria-hidden="true">
+                {HERO_LINES.map((_, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    aria-label={`Show headline ${i + 1}`}
+                    onClick={() => setHeroLine(i)}
+                    className={`h-1.5 rounded-full transition-all ${
+                      i === heroLine ? "w-7 bg-white" : "w-1.5 bg-white/30"
+                    }`}
+                  />
+                ))}
+              </div>
+            </div>
+            {/* form panel */}
+            <div className="flex flex-1 flex-col justify-center px-6 py-12 sm:max-w-[480px] sm:shrink-0 sm:px-10">
+              <p style={serif} className="text-4xl font-semibold sm:text-[42px]">
+                Your private gallery
+              </p>
+              <p className="mt-3 leading-relaxed text-[#A8A29A]">
+                Your photographer sent you a private link. Paste it below,
+                or type your event code, then enter the PIN to open your
+                photos and videos.
+              </p>
+              <ul className="mt-6 space-y-2.5 text-sm text-white/75">
+                {[
+                  "Only your moments — face-matched to you",
+                  "Download originals in one tap",
+                  "Private by PIN. No account, no signup.",
+                ].map((t) => (
+                  <li key={t} className="flex items-start gap-2.5">
+                    <span aria-hidden="true" className="mt-0.5 text-[#2DD4BF]">✓</span>
+                    {t}
+                  </li>
+                ))}
+              </ul>
+              <form onSubmit={handleOpenGallery} className="mt-8 w-full">
+                <input
+                  value={codeInput}
+                  onChange={(e) => {
+                    setCodeInput(e.target.value);
+                    setCodeError("");
+                  }}
+                  placeholder="Paste your gallery link or event code"
+                  className="w-full rounded-xl border border-white/15 bg-white/5 px-4 py-3.5 text-sm text-[#F5F2EC] outline-none transition placeholder:text-[#A8A29A] focus:border-white/40"
+                />
+                <button
+                  type="submit"
+                  disabled={!codeInput.trim()}
+                  className="mt-3 w-full rounded-xl px-6 py-3.5 text-sm font-semibold tracking-[0.12em] text-white transition hover:opacity-90 disabled:opacity-40"
+                  style={{ backgroundColor: TEAL }}
+                >
+                  ENTER
+                </button>
+              </form>
+              {codeError && (
+                <p className="mt-3 text-sm text-[#F87171]">{codeError}</p>
+              )}
+            </div>
           </div>
         )}
 
@@ -420,13 +542,15 @@ export default function CoupleGallery() {
               >
                 {eventInfo.name}
               </h1>
-              <p className="mt-2 text-sm text-white/70">
-                {countLabel(mediaCount)}
+              <p className="mt-3">
+                <span className="inline-block rounded-full bg-black/50 px-3 py-1 text-xs font-medium text-white/90">
+                  {countLabel(mediaCount)}
+                </span>
               </p>
               <button
                 onClick={() => setView("pin")}
-                style={{ color: "#17171A" }}
-                className="mt-6 w-36 rounded-full bg-white px-6 py-3 text-sm font-semibold tracking-[0.15em] transition hover:bg-zinc-200"
+                className="mt-6 w-36 rounded-full px-6 py-3 text-sm font-semibold tracking-[0.15em] text-white transition hover:opacity-90"
+                style={{ backgroundColor: TEAL }}
               >
                 ENTER
               </button>
@@ -434,19 +558,11 @@ export default function CoupleGallery() {
           </div>
         )}
 
-        {/* ---- PIN keypad ---- */}
+        {/* ---- PIN: split-screen, separate boxes ---- */}
         {slug && eventInfo && !unlocked && view === "pin" && !infoLoading && (
-          <div className="relative min-h-[100dvh] overflow-hidden">
-            {cover && (
-              <img
-                src={cover}
-                alt=""
-                aria-hidden="true"
-                className="absolute inset-0 h-full w-full scale-110 object-cover opacity-40 blur-2xl"
-              />
-            )}
-            <div className="absolute inset-0 bg-black/60" />
-            <div className="relative mx-auto flex min-h-[100dvh] w-full max-w-sm flex-col px-6 pb-10 pt-5">
+          <div className="flex min-h-[100dvh] flex-col sm:flex-row">
+            {/* form panel */}
+            <div className="flex flex-1 flex-col px-6 py-5 sm:max-w-[480px] sm:shrink-0 sm:px-10 sm:py-6">
               <button
                 onClick={() => {
                   setView("hero");
@@ -458,71 +574,94 @@ export default function CoupleGallery() {
                 ← Back
               </button>
 
-              <div className="flex flex-1 flex-col items-center justify-center">
-                <p className="text-[12px] font-semibold uppercase tracking-[0.3em] text-white/70">
-                  Enter PIN code
+              <div className="flex flex-1 flex-col justify-center py-10">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-white/50">
+                  DKNOTT Photography
                 </p>
-                <div className="mt-6 flex gap-4" aria-hidden="true">
-                  {[0, 1, 2, 3].map((i) => (
-                    <span
-                      key={i}
-                      className={`h-4 w-4 rounded-full border-2 transition ${
-                        pin.length > i
-                          ? "border-white bg-white"
-                          : "border-white/50 bg-transparent"
-                      }`}
-                    />
-                  ))}
-                </div>
+                <h1
+                  style={serif}
+                  className="mt-3 text-3xl font-semibold uppercase leading-tight tracking-wide sm:text-4xl"
+                >
+                  {eventInfo.name}
+                </h1>
+                <p className="mt-2 text-sm text-white/60">
+                  {countLabel(mediaCount)} · Private gallery
+                </p>
 
-                <div className="mt-10 grid w-full max-w-[280px] grid-cols-3 gap-x-4 gap-y-5">
-                  {["1", "2", "3", "4", "5", "6", "7", "8", "9"].map((d) => (
-                    <button
-                      key={d}
-                      type="button"
-                      onClick={() => keypadPress(d)}
-                      className="flex h-16 w-16 items-center justify-center justify-self-center rounded-full bg-white/10 text-2xl font-medium text-white transition active:bg-white/25"
-                    >
-                      {d}
-                    </button>
-                  ))}
-                  <span />
-                  <button
-                    type="button"
-                    onClick={() => keypadPress("0")}
-                    className="flex h-16 w-16 items-center justify-center justify-self-center rounded-full bg-white/10 text-2xl font-medium text-white transition active:bg-white/25"
-                  >
-                    0
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => keypadPress("back")}
-                    aria-label="Delete"
-                    className="flex h-16 w-16 items-center justify-center justify-self-center rounded-full bg-white/10 text-xl text-white transition active:bg-white/25"
-                  >
-                    ⌫
-                  </button>
+                <p className="mt-8 text-[12px] font-semibold uppercase tracking-[0.25em] text-white/70">
+                  Enter your 4-digit PIN
+                </p>
+                <div className="mt-4">
+                  <PinBoxes
+                    value={pin}
+                    disabled={unlocking}
+                    onChange={(v) => {
+                      setPin(v);
+                      setUnlockError("");
+                    }}
+                  />
                 </div>
 
                 <button
                   type="button"
                   onClick={() => attemptUnlock(pin)}
                   disabled={unlocking || pin.length !== 4}
-                  style={{ color: "#17171A" }}
-                  className="mt-10 w-full max-w-[280px] rounded-full bg-white px-6 py-3.5 text-sm font-semibold tracking-[0.15em] transition hover:bg-zinc-200 disabled:opacity-40"
+                  className="mt-7 w-full rounded-xl px-6 py-3.5 text-sm font-semibold tracking-[0.12em] text-white transition hover:opacity-90 disabled:opacity-40 sm:max-w-[320px]"
+                  style={{ backgroundColor: TEAL }}
                 >
                   {unlocking ? "CHECKING…" : "CONTINUE"}
                 </button>
 
                 {unlockError && (
-                  <p className="mt-4 text-center text-sm text-[#FCA5A5]">
+                  <p className="mt-4 text-sm text-[#FCA5A5]">
                     Wrong PIN — ask your photographer for the gallery PIN.
                   </p>
                 )}
-                <p className="mt-8 max-w-[280px] text-center text-[11px] leading-relaxed text-white/45">
+                <p className="mt-8 max-w-[320px] text-[11px] leading-relaxed text-white/45">
                   By continuing further you consent to our Terms and
                   Conditions and Privacy Policy.
                 </p>
+              </div>
+            </div>
+
+            {/* photo hero panel */}
+            <div className="relative flex h-64 shrink-0 flex-col justify-end overflow-hidden sm:h-auto sm:flex-1">
+              {cover ? (
+                <img
+                  src={cover}
+                  alt={eventInfo.name}
+                  className="absolute inset-0 h-full w-full object-cover"
+                />
+              ) : (
+                <div
+                  className="absolute inset-0"
+                  style={{
+                    background:
+                      "radial-gradient(110% 90% at 20% 0%, #1E3A34 0%, #17171A 55%, #101012 100%)",
+                  }}
+                />
+              )}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-black/20" />
+              <div className="relative px-6 pb-8 sm:px-10 sm:pb-12">
+                <h2
+                  style={serif}
+                  className="max-w-md text-3xl font-semibold leading-snug sm:text-4xl"
+                >
+                  {HERO_LINES[heroLine]}
+                </h2>
+                <div className="mt-5 flex gap-2" aria-hidden="true">
+                  {HERO_LINES.map((_, i) => (
+                    <button
+                      key={i}
+                      type="button"
+                      aria-label={`Show headline ${i + 1}`}
+                      onClick={() => setHeroLine(i)}
+                      className={`h-1.5 rounded-full transition-all ${
+                        i === heroLine ? "w-7 bg-white" : "w-1.5 bg-white/30"
+                      }`}
+                    />
+                  ))}
+                </div>
               </div>
             </div>
           </div>
@@ -531,7 +670,7 @@ export default function CoupleGallery() {
         {/* ---- unlocked: albums / videos / favourites / more ---- */}
         {slug && eventInfo && unlocked && !infoLoading && (
           <div className="mx-auto flex min-h-[100dvh] w-full max-w-3xl flex-col pb-24">
-            <header className="relative px-4 pb-2 pt-6 text-center">
+            <header className="relative border-b border-white/10 px-4 pb-4 pt-6 text-center">
               <h1
                 style={serif}
                 className="text-2xl font-semibold uppercase tracking-wide"
@@ -583,8 +722,8 @@ export default function CoupleGallery() {
                           setOpenFolder(name);
                           setView("folder");
                         }}
-                        className="relative block w-full overflow-hidden rounded-2xl text-left"
-                        style={{ backgroundColor: CARD }}
+                        className="block w-full overflow-hidden rounded-2xl border border-white/10 text-left transition hover:border-white/25"
+                        style={{ backgroundColor: SURFACE }}
                       >
                         {coverUrl && (
                           <img
@@ -594,17 +733,24 @@ export default function CoupleGallery() {
                             loading="lazy"
                           />
                         )}
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/15 to-transparent" />
-                        <div className="absolute bottom-0 left-0 p-4">
-                          <p className="text-lg font-bold uppercase tracking-wide">
-                            {name}
-                          </p>
-                          <span className="mt-1.5 inline-block rounded-full bg-black/50 px-2.5 py-0.5 text-xs font-medium text-white/90">
-                            {countLabel(
-                              items.length,
-                              hasVideo ? "Item" : "Photo",
-                              hasVideo ? "Items" : "Photos"
-                            )}
+                        <div className="flex items-center justify-between gap-3 px-4 py-3.5">
+                          <div className="min-w-0">
+                            <p className="truncate text-base font-bold uppercase tracking-wide">
+                              {name}
+                            </p>
+                            <p className="mt-0.5 text-xs text-white/50">
+                              {countLabel(
+                                items.length,
+                                hasVideo ? "Item" : "Photo",
+                                hasVideo ? "Items" : "Photos"
+                              )}
+                            </p>
+                          </div>
+                          <span
+                            aria-hidden="true"
+                            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/10 text-sm text-white/80"
+                          >
+                            ›
                           </span>
                         </div>
                       </button>
@@ -693,15 +839,16 @@ export default function CoupleGallery() {
                       setOpenFolder(null);
                       setView(key);
                     }}
-                    style={{
-                      color: active
-                        ? "#FFFFFF"
-                        : "rgba(255,255,255,0.45)",
-                    }}
-                    className="flex flex-col items-center gap-0.5 py-2.5 text-[11px] font-medium transition"
+                    className="flex justify-center py-2"
                   >
-                    <span className="text-lg leading-none">{icon}</span>
-                    {label}
+                    <span
+                      className={`flex flex-col items-center gap-0.5 rounded-full px-4 py-1.5 text-[11px] font-medium transition ${
+                        active ? "bg-white/10 text-white" : "text-white/45"
+                      }`}
+                    >
+                      <span className="text-lg leading-none">{icon}</span>
+                      {label}
+                    </span>
                   </button>
                   );
                 })}
@@ -790,8 +937,8 @@ export default function CoupleGallery() {
                 onClick={() => setSheet(null)}
               >
                 <div
-                  className="w-full rounded-t-2xl p-5 pb-8"
-                  style={{ backgroundColor: CARD }}
+                  className="w-full rounded-t-2xl border-t border-white/10 p-5 pb-8"
+                  style={{ backgroundColor: SURFACE }}
                   onClick={(e) => e.stopPropagation()}
                 >
                   <p className="text-center text-sm font-semibold text-white/80">
@@ -847,12 +994,12 @@ function FolderGrid({ title, items, onBack, onOpen, emptyText }) {
           {emptyText || "Nothing here yet."}
         </p>
       ) : (
-        <div className="grid grid-cols-3 gap-1">
+        <div className="grid grid-cols-3 gap-2">
           {items.map((item) => (
             <button
               key={item.id}
               onClick={() => onOpen(item, items)}
-              className="group relative overflow-hidden rounded-md bg-white/5"
+              className="group relative overflow-hidden rounded-xl bg-white/5 transition hover:ring-1 hover:ring-white/30"
             >
               {item.media_type === "video" ? (
                 <span className="relative block aspect-square w-full">
