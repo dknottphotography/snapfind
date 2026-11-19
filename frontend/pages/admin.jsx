@@ -893,7 +893,7 @@ export default function AdminPage() {
                           href={resolveUrl(selectedEvent.qr_url)}
                           target="_blank"
                           rel="noreferrer"
-                          className="text-xs font-medium text-[#0e7490] hover:underline"
+                          className="text-xs font-medium text-[#0e7490] transition hover:text-[#0f766e]"
                         >
                           Open QR code ↗
                         </a>
