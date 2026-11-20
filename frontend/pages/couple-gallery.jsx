@@ -721,9 +721,9 @@ export default function CoupleGallery() {
               </p>
             )}
 
-            {/* albums */}
+            {/* albums — Ve.ai-style grid: cover on top, name below */}
             {view === "albums" && (
-              <main className="mt-4 space-y-4 px-4">
+              <main className="mt-4 px-4">
                 {mediaLoading ? (
                   <p className="py-16 text-center text-sm text-[#A8A29A]">
                     Loading your photos and videos…
@@ -736,35 +736,35 @@ export default function CoupleGallery() {
                     </p>
                   </div>
                 ) : (
-                  folders.map(([name, items]) => {
-                    const coverUrl = folderCover(items);
-                    const hasVideo = items.some(
-                      (m) => m.media_type === "video"
-                    );
-                    return (
-                      <button
-                        key={name}
-                        onClick={() => {
-                          setOpenFolder(name);
-                          setView("folder");
-                        }}
-                        className="block w-full overflow-hidden rounded-2xl border border-white/10 text-left transition hover:border-white/25"
-                        style={{ backgroundColor: SURFACE }}
-                      >
-                        {coverUrl && (
-                          <img
-                            src={coverUrl}
-                            alt={name}
-                            className="aspect-[16/10] w-full object-cover"
-                            loading="lazy"
-                          />
-                        )}
-                        <div className="flex items-center justify-between gap-3 px-4 py-3.5">
-                          <div className="min-w-0">
-                            <p className="truncate text-base font-bold uppercase tracking-wide">
+                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                    {folders.map(([name, items]) => {
+                      const coverUrl = folderCover(items);
+                      const hasVideo = items.some(
+                        (m) => m.media_type === "video"
+                      );
+                      return (
+                        <button
+                          key={name}
+                          onClick={() => {
+                            setOpenFolder(name);
+                            setView("folder");
+                          }}
+                          className="block w-full overflow-hidden rounded-2xl border border-white/10 text-left transition hover:border-white/25"
+                          style={{ backgroundColor: SURFACE }}
+                        >
+                          {coverUrl && (
+                            <img
+                              src={coverUrl}
+                              alt={name}
+                              className="aspect-[4/3] w-full object-cover"
+                              loading="lazy"
+                            />
+                          )}
+                          <div className="px-3 py-2.5">
+                            <p className="truncate text-[13px] font-semibold uppercase tracking-wide">
                               {name}
                             </p>
-                            <p className="mt-0.5 text-xs text-white/50">
+                            <p className="mt-0.5 text-[11px] text-white/50">
                               {countLabel(
                                 items.length,
                                 hasVideo ? "Item" : "Photo",
@@ -772,16 +772,10 @@ export default function CoupleGallery() {
                               )}
                             </p>
                           </div>
-                          <span
-                            aria-hidden="true"
-                            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/10 text-sm text-white/80"
-                          >
-                            ›
-                          </span>
-                        </div>
-                      </button>
-                    );
-                  })
+                        </button>
+                      );
+                    })}
+                  </div>
                 )}
               </main>
             )}
