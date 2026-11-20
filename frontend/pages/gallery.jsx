@@ -1,9 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import Head from "next/head";
 import { useRouter } from "next/router";
-import Navbar from "../components/Navbar";
 import Lightbox from "../components/Lightbox";
-import AmbientAbyss from "../components/AmbientAbyss";
 import { IconCamera, IconQr, IconCheck, IconSearch, IconRefresh, IconFace, IconX } from "../components/icons";
 import {
   getToken,
@@ -16,6 +14,19 @@ import {
   downloadPhotoBlob,
   resolveUrl,
 } from "../lib/api";
+
+// My Gallery in the Ve.ai-style dark premium look (same family as the
+// rebuilt couple gallery and login): near-black page, dark surface
+// cards, Instrument Serif headlines, teal CTAs. Explicit rgba colours
+// throughout: the light-theme override in globals.css rewrites
+// text-white / bg-white-* / border-white-* into faint dark tints, so
+// those classes must never appear on this dark page.
+const serif = { fontFamily: "'Instrument Serif', Georgia, 'Times New Roman', serif" };
+const INK = "#17171A";
+const SURFACE = "#1E1E21";
+const TEAL = "#0F766E";
+const PAPER = "#F5F2EC";
+const MUTED = "#A8A29A";
 
 export default function GalleryPage() {
   const router = useRouter();
@@ -342,9 +353,17 @@ export default function GalleryPage() {
     }
   };
 
+  const handleLogout = () => {
+    clearAuth();
+    router.push("/");
+  };
+
   if (!authChecked) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-abyss text-inkdim">
+      <div
+        className="flex min-h-screen items-center justify-center"
+        style={{ backgroundColor: INK, color: MUTED }}
+      >
         Loading…
       </div>
     );
@@ -357,14 +376,47 @@ export default function GalleryPage() {
     <>
       <Head>
         <title>My Gallery — SnapFind</title>
+        <meta name="theme-color" content="#17171A" />
+        <link
+          href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&display=swap"
+          rel="stylesheet"
+        />
       </Head>
-      <div className="min-h-screen bg-abyss text-ink">
-        <AmbientAbyss />
-        <Navbar />
+      <div
+        className="min-h-screen"
+        style={{ backgroundColor: INK, color: PAPER }}
+      >
+        {/* dark header (replaces the light Navbar on this dark page) */}
+        <header className="sticky inset-x-0 top-0 z-40 border-b border-[rgba(255,255,255,0.08)] bg-[#17171A]/85 backdrop-blur-xl">
+          <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 sm:px-6">
+            <a href="/" className="flex items-center gap-2.5">
+              <img src="/logo-mark.svg" alt="SnapFind logo" className="h-9 w-9" />
+              <span className="font-display text-lg font-bold tracking-wide" style={{ color: PAPER }}>
+                Snap<span style={{ color: "#2DD4BF" }}>Find</span>
+              </span>
+            </a>
+            <div className="flex items-center gap-3">
+              {user && (
+                <span className="max-w-[140px] truncate text-sm" style={{ color: MUTED }}>
+                  {user.name}
+                </span>
+              )}
+              <button
+                onClick={handleLogout}
+                className="rounded-lg border border-[rgba(255,255,255,0.2)] px-4 py-1.5 text-sm font-medium transition hover:border-[rgba(255,255,255,0.45)]"
+                style={{ color: PAPER }}
+              >
+                Logout
+              </button>
+            </div>
+          </div>
+        </header>
 
         <main className="relative z-10 mx-auto max-w-6xl px-4 py-8 sm:px-6">
-          <h1 className="font-display text-3xl font-bold">My Gallery <span className="text-bio-cyan">✦</span></h1>
-          <p className="mt-1 text-sm text-inkdim">
+          <h1 style={serif} className="text-4xl font-normal sm:text-5xl">
+            My Gallery <span style={{ color: "#2DD4BF" }}>✦</span>
+          </h1>
+          <p className="mt-1 text-sm" style={{ color: MUTED }}>
             Hi {user?.name} — find the photos you&apos;re in with your Face ID.
           </p>
 
@@ -375,9 +427,15 @@ export default function GalleryPage() {
           )}
 
           {/* ---- STEP 1: find the event ---- */}
-          <div className="mt-6 glass rounded-2xl p-6">
-            <h2 className="font-display text-lg font-semibold">
-              <span className="mr-2 inline-flex h-6 w-6 items-center justify-center rounded-lg bg-gradient-to-br from-bio-teal to-uv-magenta text-xs font-bold">
+          <div
+            className="mt-6 rounded-2xl border border-[rgba(255,255,255,0.08)] p-6"
+            style={{ backgroundColor: SURFACE }}
+          >
+            <h2 style={serif} className="text-2xl font-normal">
+              <span
+                className="mr-2 inline-flex h-6 w-6 items-center justify-center rounded-lg text-xs font-bold"
+                style={{ backgroundColor: TEAL, color: "#ffffff" }}
+              >
                 1
               </span>
               Find your event
@@ -391,12 +449,14 @@ export default function GalleryPage() {
                   setEventError("");
                 }}
                 placeholder="e.g. ananyas-wedding"
-                className="min-w-0 flex-1 rounded-xl border border-white/10 bg-abyss/60 px-4 py-2.5 text-sm text-ink outline-none transition focus:border-bio-cyan"
+                className="min-w-0 flex-1 rounded-xl border border-[rgba(255,255,255,0.2)] bg-[rgba(255,255,255,0.06)] px-4 py-2.5 text-sm outline-none transition placeholder:text-[rgba(255,255,255,0.4)] focus:border-[rgba(255,255,255,0.55)]"
+                style={{ color: PAPER }}
               />
               <button
                 type="button"
                 onClick={startQrScan}
-                className="shrink-0 rounded-xl bg-white/10 px-4 py-2.5 text-sm font-semibold text-ink transition hover:bg-white/20"
+                className="shrink-0 rounded-xl bg-[rgba(255,255,255,0.08)] px-4 py-2.5 text-sm font-semibold transition hover:bg-[rgba(255,255,255,0.14)]"
+                style={{ color: PAPER }}
                 title="Scan the event QR code"
               >
                 <span className="inline-flex items-center gap-2"><IconQr size={16} /> Scan QR</span>
@@ -404,7 +464,8 @@ export default function GalleryPage() {
               <button
                 type="submit"
                 disabled={validatingEvent || !eventSlug.trim()}
-                className="shrink-0 rounded-xl btn-bio rounded-xl px-5 py-2.5 text-sm disabled:opacity-50"
+                className="shrink-0 rounded-xl px-5 py-2.5 text-sm font-semibold transition hover:opacity-90 disabled:opacity-50"
+                style={{ backgroundColor: TEAL, color: "#ffffff" }}
               >
                 {validatingEvent ? "Checking…" : "Find event"}
               </button>
@@ -424,7 +485,8 @@ export default function GalleryPage() {
                 <button
                   onClick={handleRefresh}
                   disabled={loading}
-                  className="shrink-0 text-xs text-inkdim underline hover:text-ink disabled:opacity-50"
+                  className="shrink-0 text-xs transition hover:text-[#F5F2EC] disabled:opacity-50"
+                  style={{ color: MUTED }}
                 >
                   <span className="inline-flex items-center gap-1.5"><IconRefresh size={13} /> Refresh results</span>
                 </button>
@@ -447,14 +509,15 @@ export default function GalleryPage() {
                   <p className="flex items-center gap-2 text-sm font-semibold text-emerald-300">
                     <IconFace size={18} /> Face ID verified
                   </p>
-                  <p className="text-xs text-inkdim">
+                  <p className="text-xs" style={{ color: MUTED }}>
                     Your face is registered — AI matching is active for every
                     event you join. Not finding yourself? Try a clearer selfie.
                   </p>
                 </div>
                 <button
                   onClick={() => setShowRetake(true)}
-                  className="shrink-0 rounded-xl bg-white/10 px-4 py-2 text-xs font-medium text-ink hover:bg-white/15"
+                  className="shrink-0 rounded-xl bg-[rgba(255,255,255,0.08)] px-4 py-2 text-xs font-medium transition hover:bg-[rgba(255,255,255,0.14)]"
+                  style={{ color: PAPER }}
                 >
                   Retake
                 </button>
@@ -462,14 +525,20 @@ export default function GalleryPage() {
             ) : (
               user &&
               (!user.has_selfie || showRetake) && (
-                <div className="mt-4 glass rounded-2xl p-6">
-                  <h2 className="font-display text-lg font-semibold">
-                    <span className="mr-2 inline-flex h-6 w-6 items-center justify-center rounded-lg bg-gradient-to-br from-bio-teal to-uv-magenta text-xs font-bold">
+                <div
+                  className="mt-4 rounded-2xl border border-[rgba(255,255,255,0.08)] p-6"
+                  style={{ backgroundColor: SURFACE }}
+                >
+                  <h2 style={serif} className="text-2xl font-normal">
+                    <span
+                      className="mr-2 inline-flex h-6 w-6 items-center justify-center rounded-lg text-xs font-bold"
+                      style={{ backgroundColor: TEAL, color: "#ffffff" }}
+                    >
                       2
                     </span>
                     Check in with a selfie
                   </h2>
-                  <p className="mt-1 text-sm text-inkdim">
+                  <p className="mt-1 text-sm" style={{ color: MUTED }}>
                     Upload one clear, front-facing selfie. Our AI uses it as
                     your Face ID to find your photos.
                   </p>
@@ -478,7 +547,8 @@ export default function GalleryPage() {
                       type="button"
                       onClick={openCamera}
                       disabled={uploadingSelfie}
-                      className="rounded-xl btn-bio rounded-xl px-5 py-2 text-sm disabled:opacity-50"
+                      className="rounded-xl px-5 py-2 text-sm font-semibold transition hover:opacity-90 disabled:opacity-50"
+                      style={{ backgroundColor: TEAL, color: "#ffffff" }}
                     >
                       <span className="inline-flex items-center gap-2"><IconCamera size={16} /> Take selfie</span>
                     </button>
@@ -491,11 +561,12 @@ export default function GalleryPage() {
                         if (f) handleSelfieUpload(f);
                         e.target.value = "";
                       }}
-                      className="text-sm text-inkdim file:mr-3 file:rounded-xl file:border-0 file:bg-[#0e7490] file:px-4 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-[#0f766e] disabled:opacity-50"
+                      className="text-sm file:mr-3 file:rounded-xl file:border-0 file:bg-[#0e7490] file:px-4 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-[#0f766e] disabled:opacity-50"
+                      style={{ color: MUTED }}
                     />
                   </div>
                   {uploadingSelfie && (
-                    <p className="mt-3 text-sm font-medium text-bio-cyan">
+                    <p className="mt-3 text-sm font-medium" style={{ color: "#2DD4BF" }}>
                       {selfieStatus || "Scanning face…"}
                     </p>
                   )}
@@ -504,7 +575,8 @@ export default function GalleryPage() {
                       onClick={() => {
                         setShowRetake(false);
                       }}
-                      className="mt-3 text-xs text-inkdim underline hover:text-inkdim"
+                      className="mt-3 text-xs transition hover:text-[#F5F2EC]"
+                      style={{ color: MUTED }}
                     >
                       Cancel retake
                     </button>
@@ -515,31 +587,37 @@ export default function GalleryPage() {
 
           {/* ---- STEP 3: matches (only after event + selfie) ---- */}
           {eventValid && user?.has_selfie && (
-            <div className="mt-4 glass rounded-2xl p-6">
-              <h2 className="font-display text-lg font-semibold">
-                <span className="mr-2 inline-flex h-6 w-6 items-center justify-center rounded-lg bg-gradient-to-br from-bio-teal to-uv-magenta text-xs font-bold">
+            <div
+              className="mt-4 rounded-2xl border border-[rgba(255,255,255,0.08)] p-6"
+              style={{ backgroundColor: SURFACE }}
+            >
+              <h2 style={serif} className="text-2xl font-normal">
+                <span
+                  className="mr-2 inline-flex h-6 w-6 items-center justify-center rounded-lg text-xs font-bold"
+                  style={{ backgroundColor: TEAL, color: "#ffffff" }}
+                >
                   3
                 </span>
                 Your matched photos
                 {resultsCurrent && matches.length > 0 && (
-                  <span className="ml-2 text-sm font-normal text-inkdim">
+                  <span className="ml-2 text-sm font-normal" style={{ color: MUTED }}>
                     {matches.length} found
                   </span>
                 )}
               </h2>
 
               {loading ? (
-                <p className="py-10 text-center text-sm text-inkdim">
+                <p className="py-10 text-center text-sm" style={{ color: MUTED }}>
                   Scanning photos for your face…
                 </p>
               ) : !resultsCurrent ? (
-                <p className="py-10 text-center text-sm text-inkdim">
+                <p className="py-10 text-center text-sm" style={{ color: MUTED }}>
                   Searching your photos…
                 </p>
               ) : matches.length === 0 ? (
                 <div className="py-10 text-center">
-                  <div className="text-inkdim"><IconSearch size={40} /></div>
-                  <p className="mt-3 text-sm text-inkdim">
+                  <div style={{ color: MUTED }}><IconSearch size={40} /></div>
+                  <p className="mt-3 text-sm" style={{ color: MUTED }}>
                     No matches yet — try a clearer, front-facing selfie.
                   </p>
                 </div>
@@ -549,7 +627,7 @@ export default function GalleryPage() {
                     <button
                       key={m.id}
                       onClick={() => setLightboxPhoto(m)}
-                      className="group relative overflow-hidden rounded-xl text-left ring-1 ring-white/10 transition hover:ring-bio-cyan/50"
+                      className="group relative overflow-hidden rounded-xl text-left ring-1 ring-[rgba(255,255,255,0.1)] transition hover:ring-[#0F766E]"
                     >
                       <img
                         src={resolveUrl(m.url)}
@@ -560,7 +638,7 @@ export default function GalleryPage() {
                       <span className="absolute left-2 top-2 rounded-full bg-emerald-500/90 px-2 py-0.5 text-xs font-semibold text-white">
                         {Math.round(m.score ?? 0)}% match
                       </span>
-                      <span className="absolute inset-x-0 bottom-0 bg-black/60 px-2 py-1 text-[11px] text-inkdim opacity-0 transition group-hover:opacity-100">
+                      <span className="absolute inset-x-0 bottom-0 bg-black/60 px-2 py-1 text-[11px] text-[rgba(255,255,255,0.7)] opacity-0 transition group-hover:opacity-100">
                         Click to view ⤢
                       </span>
                     </button>
@@ -582,12 +660,16 @@ export default function GalleryPage() {
         {/* ---- In-page selfie camera ---- */}
         {showCamera && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
-            <div className="glass-deep w-full max-w-md overflow-hidden rounded-2xl">
+            <div
+              className="w-full max-w-md overflow-hidden rounded-2xl border border-[rgba(255,255,255,0.1)]"
+              style={{ backgroundColor: SURFACE }}
+            >
               <div className="flex items-center justify-between px-4 py-3">
-                <h3 className="font-display font-semibold text-ink">Take your selfie</h3>
+                <h3 style={serif} className="text-xl font-normal">Take your selfie</h3>
                 <button
                   onClick={closeCamera}
-                  className="rounded-lg bg-white/10 px-3 py-1 text-sm text-inkdim hover:bg-white/20"
+                  className="rounded-lg bg-[rgba(255,255,255,0.08)] px-3 py-1 text-sm transition hover:bg-[rgba(255,255,255,0.14)]"
+                  style={{ color: MUTED }}
                 >
                   <span className="inline-flex items-center gap-1.5"><IconX size={14} /> Close</span>
                 </button>
@@ -612,7 +694,8 @@ export default function GalleryPage() {
                   <div className="flex items-center justify-center gap-3 px-4 py-4">
                     <button
                       onClick={capturePhoto}
-                      className="rounded-full btn-bio rounded-full px-8 py-3 font-semibold"
+                      className="rounded-full px-8 py-3 font-semibold transition hover:opacity-90"
+                      style={{ backgroundColor: TEAL, color: "#ffffff" }}
                     >
                       <span className="inline-flex items-center gap-2"><IconCamera size={18} /> Capture</span>
                     </button>
@@ -626,12 +709,16 @@ export default function GalleryPage() {
         {/* ---- QR scanner ---- */}
         {showQrScanner && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
-            <div className="glass-deep w-full max-w-md overflow-hidden rounded-2xl">
+            <div
+              className="w-full max-w-md overflow-hidden rounded-2xl border border-[rgba(255,255,255,0.1)]"
+              style={{ backgroundColor: SURFACE }}
+            >
               <div className="flex items-center justify-between px-4 py-3">
-                <h3 className="font-display font-semibold text-ink">Scan event QR</h3>
+                <h3 style={serif} className="text-xl font-normal">Scan event QR</h3>
                 <button
                   onClick={stopQrScan}
-                  className="rounded-lg bg-white/10 px-3 py-1 text-sm text-inkdim hover:bg-white/20"
+                  className="rounded-lg bg-[rgba(255,255,255,0.08)] px-3 py-1 text-sm transition hover:bg-[rgba(255,255,255,0.14)]"
+                  style={{ color: MUTED }}
                 >
                   <span className="inline-flex items-center gap-1.5"><IconX size={14} /> Close</span>
                 </button>
@@ -647,7 +734,7 @@ export default function GalleryPage() {
                       id="qr-reader"
                       className="overflow-hidden rounded-xl"
                     />
-                    <p className="mt-3 text-center text-xs text-inkdim">
+                    <p className="mt-3 text-center text-xs" style={{ color: MUTED }}>
                       Point your camera at the event QR code
                     </p>
                   </>

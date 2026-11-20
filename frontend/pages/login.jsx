@@ -2,9 +2,26 @@ import { useEffect, useState } from "react";
 import Head from "next/head";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import Navbar from "../components/Navbar";
-import AmbientAbyss from "../components/AmbientAbyss";
 import { login, saveAuth, getToken, getUser } from "../lib/api";
+
+// Login in the Ve.ai-style dark premium look (same family as the
+// rebuilt couple gallery): split screen — form on the left, brand
+// panel with a rotating serif headline on the right. Explicit rgba
+// colours throughout: the light-theme override in globals.css rewrites
+// text-white / bg-white-* / border-white-* into faint dark tints, so
+// those classes must never appear on this dark page.
+const serif = { fontFamily: "'Instrument Serif', Georgia, 'Times New Roman', serif" };
+const INK = "#17171A";
+const SURFACE = "#1E1E21";
+const TEAL = "#0F766E";
+const PAPER = "#F5F2EC";
+const MUTED = "#A8A29A";
+
+const HERO_LINES = [
+  "Every guest finds their photos.",
+  "Your face is the key to your photos.",
+  "Private by design — yours only.",
+];
 
 export default function LoginPage() {
   const router = useRouter();
@@ -13,6 +30,15 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [heroLine, setHeroLine] = useState(0);
+
+  useEffect(() => {
+    const t = setInterval(
+      () => setHeroLine((i) => (i + 1) % HERO_LINES.length),
+      4500
+    );
+    return () => clearInterval(t);
+  }, []);
 
   useEffect(() => {
     const t = getToken();
@@ -40,53 +66,72 @@ export default function LoginPage() {
     <>
       <Head>
         <title>Log in to SnapFind</title>
+        <meta name="theme-color" content="#17171A" />
+        <link
+          href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&display=swap"
+          rel="stylesheet"
+        />
       </Head>
-      <div className="min-h-screen bg-abyss text-ink">
-        <AmbientAbyss />
-        <Navbar />
-        <main className="relative z-10 mx-auto flex max-w-md items-center justify-center px-4 py-20">
+      <div
+        className="flex min-h-[100dvh] flex-col sm:flex-row"
+        style={{ backgroundColor: INK, color: PAPER }}
+      >
+        {/* ---- form panel ---- */}
+        <div className="flex flex-1 flex-col px-6 py-6 sm:max-w-[480px] sm:shrink-0 sm:px-10 sm:py-8">
+          <Link href="/" className="flex items-center gap-2.5 self-start">
+            <img src="/logo-mark.svg" alt="SnapFind logo" className="h-10 w-10" />
+            <span className="font-display text-lg font-bold tracking-wide" style={{ color: PAPER }}>
+              Snap<span style={{ color: "#2DD4BF" }}>Find</span>
+            </span>
+          </Link>
+
           <form
             onSubmit={handleSubmit}
-            className="glass-deep w-full rounded-3xl p-8"
+            className="flex flex-1 flex-col justify-center py-10"
           >
-            <h1 className="font-display mt-3 text-2xl font-bold">Welcome back</h1>
-            <p className="mt-1 text-sm text-inkdim">
+            <h1 style={serif} className="text-4xl font-normal sm:text-[42px]">
+              Welcome back
+            </h1>
+            <p className="mt-2 text-sm leading-relaxed" style={{ color: MUTED }}>
               Log in to find your event photos.
             </p>
 
             {error && (
-              <div className="mt-4 rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-2.5 text-sm text-red-300">
+              <div className="mt-5 rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-2.5 text-sm text-red-300">
                 {error}
               </div>
             )}
 
-            <label className="mt-6 block text-sm font-medium text-inkdim">
+            <label className="mt-7 block text-sm font-medium" style={{ color: MUTED }}>
               Email
               <input
                 type="email"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="mt-1 w-full rounded-xl border border-white/10 bg-abyss/60 px-4 py-2.5 text-ink outline-none transition focus:border-bio-cyan"
+                className="mt-1.5 w-full rounded-xl border border-[rgba(255,255,255,0.2)] bg-[rgba(255,255,255,0.06)] px-4 py-3 text-sm outline-none transition placeholder:text-[rgba(255,255,255,0.4)] focus:border-[rgba(255,255,255,0.55)]"
+                style={{ color: PAPER }}
                 placeholder="you@example.com"
               />
             </label>
 
-            <label className="mt-4 block text-sm font-medium text-inkdim">
+            <label className="mt-4 block text-sm font-medium" style={{ color: MUTED }}>
               Password
-              <div className="relative mt-1">
+              <div className="relative mt-1.5">
                 <input
                   type={showPassword ? "text" : "password"}
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full rounded-xl border border-white/10 bg-abyss/60 px-4 py-2.5 pr-12 text-ink outline-none transition focus:border-bio-cyan"
+                  className="w-full rounded-xl border border-[rgba(255,255,255,0.2)] bg-[rgba(255,255,255,0.06)] px-4 py-3 pr-16 text-sm outline-none transition placeholder:text-[rgba(255,255,255,0.4)] focus:border-[rgba(255,255,255,0.55)]"
+                  style={{ color: PAPER }}
                   placeholder="••••••••"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword((v) => !v)}
-                  className="absolute inset-y-0 right-0 px-4 text-sm font-medium text-inkdim transition hover:text-bio-cyan"
+                  className="absolute inset-y-0 right-0 px-4 text-sm font-medium transition hover:text-[#F5F2EC]"
+                  style={{ color: MUTED }}
                   aria-label={showPassword ? "Hide password" : "Show password"}
                 >
                   {showPassword ? "Hide" : "Show"}
@@ -97,19 +142,61 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="btn-bio mt-6 w-full rounded-xl py-3 disabled:opacity-50"
+              className="mt-7 w-full rounded-xl px-6 py-3.5 text-sm font-semibold tracking-[0.08em] transition hover:opacity-90 disabled:opacity-50"
+              style={{ backgroundColor: TEAL, color: "#ffffff" }}
             >
               {loading ? "Logging in…" : "Log in"}
             </button>
 
-            <p className="mt-4 text-center text-sm text-inkdim">
+            <p className="mt-5 text-center text-sm" style={{ color: MUTED }}>
               New here?{" "}
-              <Link href="/signup" className="font-semibold text-bio-cyan hover:underline">
+              <Link href="/signup" className="font-semibold" style={{ color: "#2DD4BF" }}>
                 Create an account
               </Link>
             </p>
           </form>
-        </main>
+        </div>
+
+        {/* ---- brand panel ---- */}
+        <div
+          className="relative flex h-64 shrink-0 flex-col justify-end overflow-hidden px-6 pb-8 sm:h-auto sm:flex-1 sm:px-10 sm:pb-12"
+          style={{
+            background:
+              "radial-gradient(110% 90% at 20% 0%, #1E3A34 0%, #17171A 55%, #101012 100%)",
+          }}
+        >
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute -right-16 -top-16 h-64 w-64 rounded-full opacity-25 blur-3xl"
+            style={{ background: TEAL }}
+          />
+          <p className="relative text-[11px] font-semibold uppercase tracking-[0.3em] text-white/50">
+            SnapFind · For photographers &amp; guests
+          </p>
+          <h2
+            style={serif}
+            className="relative mt-3 max-w-md text-3xl font-normal leading-snug sm:text-4xl"
+          >
+            {HERO_LINES[heroLine]}
+          </h2>
+          <p className="relative mt-3 max-w-md text-sm leading-relaxed text-white/60">
+            Face-matched galleries, private by PIN, downloads in one tap —
+            no app, no endless scrolling.
+          </p>
+          <div className="relative mt-6 flex gap-2" aria-hidden="true">
+            {HERO_LINES.map((_, i) => (
+              <button
+                key={i}
+                type="button"
+                aria-label={`Show headline ${i + 1}`}
+                onClick={() => setHeroLine(i)}
+                className={`h-1.5 rounded-full transition-all ${
+                  i === heroLine ? "w-7 bg-white" : "w-1.5 bg-white/30"
+                }`}
+              />
+            ))}
+          </div>
+        </div>
       </div>
     </>
   );
