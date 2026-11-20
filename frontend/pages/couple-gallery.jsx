@@ -824,13 +824,13 @@ export default function CoupleGallery() {
                   onClick={handleDownloadAll}
                   disabled={downloadingAll || media.length === 0}
                   style={{ color: "#17171A" }}
-                  className="w-full rounded-full bg-white px-6 py-3.5 text-sm font-semibold tracking-wide transition hover:bg-zinc-200 disabled:opacity-40"
+                  className="mx-auto block w-full max-w-[280px] rounded-full bg-white px-6 py-2.5 text-sm font-semibold tracking-wide transition hover:bg-zinc-200 disabled:opacity-40"
                 >
                   {downloadingAll ? "Downloading…" : "Download all photos"}
                 </button>
                 <button
                   onClick={handleLock}
-                  className="w-full rounded-full border border-white/25 px-6 py-3.5 text-sm font-semibold text-[#F5F2EC] transition hover:border-white/60"
+                  className="mx-auto block w-full max-w-[280px] rounded-full border border-white/25 px-6 py-2.5 text-sm font-semibold text-[#F5F2EC] transition hover:border-white/60"
                 >
                   Lock gallery
                 </button>
