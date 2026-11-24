@@ -1,269 +1,226 @@
-import { useEffect } from "react";
 import Head from "next/head";
 import Link from "next/link";
-import gsap from "gsap";
-import { ScrollTrigger } from "gsap/ScrollTrigger";
-import { motion } from "framer-motion";
 import Navbar from "../components/Navbar";
-import { scrollRig } from "../lib/scrollRig";
 
-gsap.registerPlugin(ScrollTrigger);
+// SnapFind — private galleries for couples. Dark premium landing
+// (Ve.ai family). No animation libraries, no 3D scene: plain sections
+// on the dark tokens. Explicit rgba colours throughout: the light-theme
+// override in globals.css rewrites text-white / bg-white-* /
+// border-white-* into faint dark tints, so those classes must never
+// appear on this dark page.
+const serif = { fontFamily: "'Instrument Serif', Georgia, 'Times New Roman', serif" };
+const INK = "#0a0c10";
+const PANEL = "#12151b";
+const TEAL = "#0F766E";
+const TEAL_BRIGHT = "#2DD4BF";
+const GREEN = "#30a46c";
+const PAPER = "#F5F2EC";
+const MUTED = "#A8A29A";
 
 const STEPS = [
   {
     n: "01",
-    side: "left",
-    title: "The photographer uploads",
-    desc: "Thousands of event photos flow into the studio. Faces are detected right in the browser, so the server never breaks a sweat, and the free tier never blinks.",
+    title: "Photographer creates the gallery",
+    desc: "All it needs is the couple's name — Ananya & Rohan, and the gallery exists. Photos and videos go in, organised into folders like Haldi, Wedding and Reception.",
   },
   {
     n: "02",
-    side: "right",
-    title: "One QR to join",
-    desc: "Every event gets a living QR code. Guests point their camera, and they're inside. No app to install, no account maze.",
+    title: "Set a 4-digit PIN",
+    desc: "One PIN protects the whole gallery. Change it any time — the couple is signed out immediately. Send the PIN in a separate message from the link.",
   },
   {
     n: "03",
-    side: "left",
-    title: "A selfie becomes the key",
-    desc: "One front-camera selfie registers your Face ID. The camera opens right inside the page. Private, instant, yours.",
+    title: "Share the link or QR",
+    desc: "Every gallery gets its own private link and a QR code. Send it on WhatsApp or print the QR — the couple scans it and they're at the door.",
   },
   {
     n: "04",
-    side: "right",
-    title: "Your gallery finds you",
-    desc: "The AI compares your Face ID against every face in every photo, group shots included, and assembles only the moments you're in.",
+    title: "Couple opens, enters PIN, downloads",
+    desc: "No account, no app, no signup. The couple opens the link, types the 4-digit PIN, and views or downloads their photos and videos — originals included.",
   },
 ];
 
 const FEATURES = [
   {
-    icon: "✦",
-    title: "Free forever",
-    desc: "Free forever, with no paid APIs, no cloud bills, and no cards. Just open technology on the free tier.",
-  },
-  {
-    icon: "◉",
-    title: "On-device AI",
-    desc: "Face detection runs in the browser itself, fast, private, and infinitely scalable.",
+    icon: "◈",
+    title: "Private by PIN",
+    desc: "Nothing about a gallery is visible before the right 4-digit PIN. No browsing, no guessing, no accounts for the couple.",
   },
   {
     icon: "⬢",
-    title: "Private by design",
-    desc: "Guests see only their own matches. Nobody browses anyone else's moments.",
+    title: "Permanent Cloudinary storage",
+    desc: "Photos and videos live on Cloudinary, not on a server disk that gets wiped on restart. The gallery stays up as long as you need it.",
   },
   {
-    icon: "⟡",
-    title: "Zero install",
-    desc: "QR in, gallery out. It lives entirely in the browser you already have.",
+    icon: "▤",
+    title: "Folders for every ceremony",
+    desc: "Pre-Wedding, Haldi, Mehndi, Sangeet, Wedding, Reception — or a custom folder of your own. The couple browses albums, not one endless grid.",
+  },
+  {
+    icon: "✦",
+    title: "Watermarked delivery",
+    desc: "Every photo is delivered with your studio watermark, bottom-left. The clean original is never exposed — downloads stay yours.",
   },
 ];
 
-function StepPanel({ step }) {
-  const align = step.side === "left" ? "lg:mr-auto lg:ml-0" : "lg:ml-auto lg:mr-0";
-  return (
-    <section className="relative z-10 flex min-h-screen items-center px-4 sm:px-8">
-      <div className={`reveal glass-deep w-full max-w-md rounded-3xl p-8 sm:p-10 ${align}`}>
-        <p className="eyebrow">Step {step.n}</p>
-        <h2 className="font-display mt-4 text-2xl font-bold leading-snug sm:text-3xl">
-          {step.title}
-        </h2>
-        <p className="mt-4 leading-relaxed text-inkdim">{step.desc}</p>
-        {step.n === "02" && (
-          <div className="mt-7 flex items-center gap-4">
-            <img
-              src="/sample-qr.svg"
-              alt="Sample event QR code"
-              className="h-32 w-32 shrink-0 rounded-2xl bg-white p-2 shadow-lg"
-            />
-            <p className="text-sm leading-relaxed text-inkdim">
-              Sample event QR
-              <span className="mt-1 block text-xs">
-                Point a camera at it — it opens the guest join page, just
-                like a real event code.
-              </span>
-            </p>
-          </div>
-        )}
-      </div>
-    </section>
-  );
-}
-
 export default function Home() {
-  useEffect(() => {
-    scrollRig.progress = 0;
-
-    const tween = gsap.to(scrollRig, {
-      progress: 1,
-      ease: "none",
-      scrollTrigger: {
-        trigger: "#cinematic-scroll",
-        start: "top top",
-        end: "bottom bottom",
-        scrub: 1.2,
-      },
-    });
-
-    const onMove = (e) => {
-      scrollRig.mouseX = (e.clientX / window.innerWidth - 0.5) * 2;
-      scrollRig.mouseY = -((e.clientY / window.innerHeight - 0.5) * 2);
-    };
-    window.addEventListener("mousemove", onMove);
-
-    const reveals = gsap.utils.toArray(".reveal").map((el) =>
-      gsap.fromTo(
-        el,
-        { y: 70, opacity: 0 },
-        {
-          y: 0,
-          opacity: 1,
-          duration: 1,
-          ease: "power3.out",
-          scrollTrigger: { trigger: el, start: "top 85%" },
-        }
-      )
-    );
-
-    return () => {
-      tween.scrollTrigger?.kill();
-      tween.kill();
-      reveals.forEach((r) => {
-        r.scrollTrigger?.kill();
-        r.kill();
-      });
-      window.removeEventListener("mousemove", onMove);
-      ScrollTrigger.getAll().forEach((st) => st.kill());
-    };
-  }, []);
-
   return (
     <>
       <Head>
-        <title>SnapFind: Every guest finds their photos</title>
+        <title>SnapFind: Private galleries for couples</title>
         <meta
           name="description"
-          content="SnapFind is a free AI photo finder for events. Guests scan a QR code, check in with a selfie, and instantly receive the photos they're in."
+          content="SnapFind Private Galleries: photographers create a private gallery from the couple's name, set a 4-digit PIN, and share the link or QR. The couple opens it, enters the PIN, and downloads their photos — no app, no account."
+        />
+        <link
+          href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&display=swap"
+          rel="stylesheet"
         />
       </Head>
 
-      <Navbar />
+      <div className="min-h-screen" style={{ backgroundColor: INK, color: PAPER }}>
+        <Navbar />
 
-      <div id="cinematic-scroll" className="relative z-10">
         {/* ---------------- HERO ---------------- */}
-        <section className="flex min-h-screen flex-col items-center justify-center px-4 text-center sm:px-8">
-          <motion.div
-            initial={{ opacity: 0, y: 40 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 1.1, ease: [0.22, 1, 0.36, 1] }}
-            className="max-w-5xl"
+        <section className="mx-auto max-w-6xl px-4 pb-20 pt-20 text-center sm:px-6 sm:pt-28">
+          <p
+            className="text-[11px] font-semibold uppercase tracking-[0.3em]"
+            style={{ color: TEAL_BRIGHT }}
           >
-            <h1 className="font-display mt-6 text-4xl font-extrabold leading-[1.05] sm:text-6xl lg:text-7xl">
-              Every guest finds
-              <br />
-              <span className="text-bio-cyan">their photos.</span>
-            </h1>
-            <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-inkdim">
-              Photographers upload the event. Guests scan a code, show their
-              face, and the abyss gives back only their moments, group shots
-              included, with no cloud, no fees, and no app.
-            </p>
-            <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
-              <Link
-                href="/gallery"
-                className="btn-bio rounded-2xl px-8 py-4 text-base"
-              >
-                Find my photos →
-              </Link>
-            </div>
-          </motion.div>
-
-          <motion.div
-            className="absolute bottom-8 flex flex-col items-center gap-2 text-inkdim"
-            animate={{ y: [0, 10, 0] }}
-            transition={{ repeat: Infinity, duration: 2.2, ease: "easeInOut" }}
+            SnapFind · Private Galleries
+          </p>
+          <h1
+            style={serif}
+            className="mx-auto mt-5 max-w-3xl text-5xl font-normal leading-[1.08] sm:text-7xl"
           >
-            <span className="text-xs tracking-[0.3em] uppercase">Scroll to dive</span>
-            <span className="text-xl">↓</span>
-          </motion.div>
+            Every couple gets a{" "}
+            <span style={{ color: TEAL_BRIGHT }}>private gallery.</span>
+          </h1>
+          <p className="mx-auto mt-6 max-w-2xl text-base leading-relaxed sm:text-lg" style={{ color: MUTED }}>
+            The photographer creates a gallery from the couple&apos;s name,
+            sets a 4-digit PIN, and shares a link. The couple opens it,
+            enters the PIN, and downloads their moments — no app, no account,
+            no endless scrolling.
+          </p>
+          <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
+            <Link
+              href="/couple-gallery"
+              className="rounded-xl px-8 py-4 text-base font-semibold transition hover:opacity-90"
+              style={{ backgroundColor: TEAL, color: "#ffffff" }}
+            >
+              Open my gallery →
+            </Link>
+            <Link
+              href="/login"
+              className="rounded-xl border border-[rgba(255,255,255,0.2)] px-8 py-4 text-base font-semibold transition hover:border-[rgba(255,255,255,0.45)]"
+              style={{ color: PAPER }}
+            >
+              Photographer login
+            </Link>
+          </div>
         </section>
 
-        {/* ---------------- STEPS ---------------- */}
-        {STEPS.map((s) => (
-          <StepPanel key={s.n} step={s} />
-        ))}
+        {/* ---------------- HOW IT WORKS ---------------- */}
+        <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
+          <p
+            className="text-[11px] font-semibold uppercase tracking-[0.3em]"
+            style={{ color: TEAL_BRIGHT }}
+          >
+            How it works
+          </p>
+          <h2 style={serif} className="mt-3 max-w-2xl text-3xl font-normal leading-tight sm:text-5xl">
+            From shoot to the couple&apos;s hands in four steps.
+          </h2>
+          <div className="mt-12 grid gap-5 sm:grid-cols-2">
+            {STEPS.map((s) => (
+              <div
+                key={s.n}
+                className="rounded-2xl border border-[rgba(255,255,255,0.1)] p-7"
+                style={{ backgroundColor: PANEL }}
+              >
+                <p className="text-sm font-semibold" style={{ color: TEAL_BRIGHT }}>
+                  Step {s.n}
+                </p>
+                <h3 style={serif} className="mt-3 text-2xl font-normal leading-snug">
+                  {s.title}
+                </h3>
+                <p className="mt-3 text-sm leading-relaxed" style={{ color: MUTED }}>
+                  {s.desc}
+                </p>
+              </div>
+            ))}
+          </div>
+        </section>
 
         {/* ---------------- FEATURES ---------------- */}
-        <section className="relative z-10 px-4 py-28 sm:px-8">
-          <div className="mx-auto max-w-6xl">
-            <h2 className="font-display reveal mx-auto mt-4 max-w-3xl text-center text-3xl font-bold leading-tight sm:text-5xl">
-              Built for photographers,
-              <br />
-              <span className="text-stroke">free for everyone.</span>
-            </h2>
-            <div className="mt-14 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-              {FEATURES.map((f, i) => (
-                <motion.div
-                  key={f.title}
-                  className="reveal glass group rounded-3xl p-7"
-                  whileHover={{ y: -8, transition: { duration: 0.25 } }}
-                >
-                  <div className="text-3xl text-bio-cyan">
-                    {f.icon}
-                  </div>
-                  <h3 className="font-display mt-5 text-base font-semibold">
-                    {f.title}
-                  </h3>
-                  <p className="mt-3 text-sm leading-relaxed text-inkdim">
-                    {f.desc}
-                  </p>
-                  <div className="mt-5 h-px w-full bg-gradient-to-r from-bio-teal/60 via-uv-magenta/60 to-transparent opacity-0 transition group-hover:opacity-100" />
-                </motion.div>
-              ))}
-            </div>
+        <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
+          <p
+            className="text-[11px] font-semibold uppercase tracking-[0.3em]"
+            style={{ color: TEAL_BRIGHT }}
+          >
+            Why private galleries
+          </p>
+          <h2 style={serif} className="mt-3 max-w-2xl text-3xl font-normal leading-tight sm:text-5xl">
+            Built for photographers, simple for couples.
+          </h2>
+          <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+            {FEATURES.map((f) => (
+              <div
+                key={f.title}
+                className="rounded-2xl border border-[rgba(255,255,255,0.1)] p-7"
+                style={{ backgroundColor: PANEL }}
+              >
+                <div className="text-3xl" style={{ color: TEAL_BRIGHT }}>
+                  {f.icon}
+                </div>
+                <h3 style={serif} className="mt-5 text-xl font-normal leading-snug">
+                  {f.title}
+                </h3>
+                <p className="mt-3 text-sm leading-relaxed" style={{ color: MUTED }}>
+                  {f.desc}
+                </p>
+              </div>
+            ))}
           </div>
         </section>
 
         {/* ---------------- FINALE ---------------- */}
-        <section className="relative z-10 flex min-h-screen flex-col items-center justify-center px-4 text-center sm:px-8">
-          <motion.div
-            className="reveal max-w-4xl"
-            initial={{ opacity: 0, scale: 0.96 }}
-            whileInView={{ opacity: 1, scale: 1 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.9 }}
-          >
-            <h2 className="font-display mt-6 text-4xl font-extrabold leading-tight sm:text-6xl">
-              Step into the <span className="text-bio-cyan">abyss.</span>
-              <br />
-              Leave with your memories.
-            </h2>
-            <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
-              <Link
-                href="/gallery"
-                className="btn-bio rounded-2xl px-8 py-4 text-base"
-              >
-                Find my photos →
-              </Link>
-              <Link
-                href="/signup"
-                className="btn-ghost rounded-2xl px-8 py-4 text-base font-semibold"
-              >
-                Create account
-              </Link>
-            </div>
-          </motion.div>
-
-          <footer className="absolute inset-x-0 bottom-0 border-t border-white/10 py-6">
-            <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-2 px-4 text-xs text-inkdim sm:flex-row sm:px-8">
-              <span className="flex items-center gap-2 font-display font-bold text-ink">
-                <img src="/logo-mark.svg" alt="" className="h-6 w-6" />
-                Snap<span className="-ml-2 text-bio-teal">Find</span>
-              </span>
-              <span>Free &amp; open-source. Your photos stay yours.</span>
-            </div>
-          </footer>
+        <section className="mx-auto max-w-6xl px-4 pb-24 pt-16 text-center sm:px-6">
+          <h2 style={serif} className="mx-auto max-w-3xl text-4xl font-normal leading-tight sm:text-6xl">
+            Your photos, <span style={{ color: TEAL_BRIGHT }}>beautifully kept.</span>
+          </h2>
+          <p className="mx-auto mt-5 max-w-xl text-base leading-relaxed" style={{ color: MUTED }}>
+            Got a gallery link from your photographer? Open it and enter
+            your PIN. Shooting a wedding? Log in and create your first
+            gallery.
+          </p>
+          <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
+            <Link
+              href="/couple-gallery"
+              className="rounded-xl px-8 py-4 text-base font-semibold transition hover:opacity-90"
+              style={{ backgroundColor: TEAL, color: "#ffffff" }}
+            >
+              Open my gallery →
+            </Link>
+            <Link
+              href="/signup"
+              className="rounded-xl border border-[rgba(255,255,255,0.2)] px-8 py-4 text-base font-semibold transition hover:border-[rgba(255,255,255,0.45)]"
+              style={{ color: PAPER }}
+            >
+              Create account
+            </Link>
+          </div>
         </section>
+
+        <footer className="border-t border-[rgba(255,255,255,0.1)] py-6">
+          <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-2 px-4 text-xs sm:flex-row sm:px-6" style={{ color: MUTED }}>
+            <span className="flex items-center gap-2 font-display font-bold" style={{ color: PAPER }}>
+              <img src="/logo-mark.svg" alt="" className="h-6 w-6" />
+              Snap<span className="-ml-2" style={{ color: TEAL_BRIGHT }}>Find</span>
+            </span>
+            <span>Private galleries. Your photos stay yours.</span>
+          </div>
+        </footer>
       </div>
     </>
   );

@@ -1,5 +1,4 @@
 """SQLAlchemy models — SQLite, zero paid services."""
-import json
 from datetime import datetime
 
 from flask_sqlalchemy import SQLAlchemy
@@ -19,13 +18,6 @@ class User(db.Model):
     role = db.Column(db.String(20), nullable=False, default="guest")  # admin | guest
     is_active = db.Column(db.Boolean, nullable=False, default=True)
 
-    # Guest "Face ID": path relative to static/ + ArcFace embedding as JSON.
-    selfie_path = db.Column(db.String(255), nullable=True)
-    selfie_embedding = db.Column(db.Text, nullable=True)  # JSON list[float]
-    # When Cloudinary is configured, the selfie file lives there instead of
-    # on local disk (which free hosts wipe on restart); this is its URL.
-    selfie_cloudinary_url = db.Column(db.String(700), nullable=True)
-
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
 
     def set_password(self, password: str) -> None:
@@ -42,62 +34,15 @@ class User(db.Model):
             "phone": self.phone,
             "role": self.role,
             "is_active": bool(self.is_active),
-            "has_selfie": bool(self.selfie_embedding),
-            "selfie_url": self.selfie_cloudinary_url or (
-                f"/static/{self.selfie_path}" if self.selfie_path else None
-            ),
             "created_at": self.created_at.isoformat() if self.created_at else None,
         }
-
-
-class Event(db.Model):
-    __tablename__ = "events"
-
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(200), nullable=False)
-    slug = db.Column(db.String(64), unique=True, nullable=False, index=True)
-    admin_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
-
-    photos = db.relationship(
-        "Photo", backref="event", cascade="all, delete-orphan", lazy="dynamic"
-    )
-
-
-class Photo(db.Model):
-    __tablename__ = "photos"
-
-    id = db.Column(db.Integer, primary_key=True)
-    event_id = db.Column(db.Integer, db.ForeignKey("events.id"), nullable=False, index=True)
-    filename = db.Column(db.String(255), nullable=False)
-    # Path relative to static/, e.g. "uploads/wedding-a1b2c3/ab12cd.jpg".
-    rel_path = db.Column(db.String(500), nullable=False, default="")
-    # When Cloudinary is configured, the image file lives there (permanent)
-    # instead of on local disk; rel_path then stays "" and these are set.
-    cloudinary_url = db.Column(db.String(700), nullable=True)
-    cloudinary_public_id = db.Column(db.String(400), nullable=True)
-    # Watermark colour chosen for this photo ('white' | 'black' | NULL =
-    # not computed yet). See gallery_cloudinary.WATERMARK_LOGOS.
-    wm_variant = db.Column(db.String(10), nullable=True)
-    # JSON: list of ArcFace embedding vectors (one per detected face)
-    face_embeddings = db.Column(db.Text, nullable=False, default="[]")
-    faces_detected = db.Column(db.Integer, nullable=False, default=0)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
-
-    def embedding_list(self):
-        try:
-            return json.loads(self.face_embeddings or "[]")
-        except Exception:
-            return []
 
 
 class CoupleGallery(db.Model):
     """A standalone private gallery for one couple.
 
-    Deliberately NOT linked to Event: a SnapFind event is the guest
-    selfie-matching flow, while a couple's gallery is created on its own,
-    has its own name/slug/passcode, and its media never touch the events
-    or photos tables.
+    Created on its own from the couple's name, with its own slug and
+    passcode; its media live in the gallery_media table.
     """
 
     __tablename__ = "couple_galleries"

@@ -1,32 +1,29 @@
-"""SnapFind backend — Flask + SQLAlchemy + DeepFace, 100% free & open-source.
+"""SnapFind backend — Flask + SQLAlchemy, 100% free & open-source.
+
+Private galleries for couples: the photographer creates a gallery from
+the couple's name, sets a 4-digit PIN, and shares the link or QR.
+Media lives permanently on Cloudinary (unsigned upload preset).
 
 Run:
     pip install -r requirements.txt
     python app.py            # -> http://localhost:5000
-
-First run downloads the ArcFace + RetinaFace weights (free, one-time).
 """
 import io
-import json
 import os
 import re
-import shutil
-import uuid
 from datetime import datetime, timedelta
 from functools import wraps
 
 import jwt
-import numpy as np
 import qrcode
-from flask import Flask, request, jsonify, send_from_directory, send_file, abort, redirect
+from flask import Flask, request, jsonify, send_from_directory, send_file, abort
 from flask_cors import CORS
 from werkzeug.utils import secure_filename
 
-import face_engine
 import gallery_cloudinary
 from gallery_cloudinary import GalleryStorageError
 from config import Config, BASE_DIR
-from models import db, User, Event, Photo, CoupleGallery, GalleryMedia
+from models import db, User, CoupleGallery, GalleryMedia
 
 app = Flask(__name__)
 app.config.from_object(Config)
@@ -41,14 +38,7 @@ gallery_cloudinary.init(
     app.config["CLOUDINARY_CLOUD_NAME"], app.config["CLOUDINARY_UPLOAD_PRESET"]
 )
 
-ALLOWED_EXTS = {"png", "jpg", "jpeg", "webp"}
-
-
 # ---------------------------------------------------------------- auth helpers
-def _allowed_file(name: str) -> bool:
-    return "." in name and name.rsplit(".", 1)[1].lower() in ALLOWED_EXTS
-
-
 def make_token(user: User) -> str:
     payload = {
         "sub": str(user.id),
@@ -242,65 +232,10 @@ def gallery_media_payload(item: GalleryMedia) -> dict:
     }
 
 
-def event_payload(event: Event) -> dict:
-    fe = _frontend_base()
-    be = _public_base()
-    return {
-        "id": event.id,
-        "name": event.name,
-        "slug": event.slug,
-        "join_url": f"{fe}/join?event={event.slug}",
-        "qr_url": f"{be}/static/qrcodes/{event.slug}.png",
-        "photo_count": event.photos.count(),
-        "created_at": event.created_at.isoformat() if event.created_at else None,
-    }
-
-
 def _cloudinary_ready() -> bool:
     return gallery_cloudinary.configured(
         app.config["CLOUDINARY_CLOUD_NAME"], app.config["CLOUDINARY_UPLOAD_PRESET"]
     )
-
-
-def photo_payload(photo: Photo, distance=None) -> dict:
-    be = _public_base()
-    if photo.cloudinary_public_id:
-        # Delivered watermarked (DKNOTT logo, bottom-left, colour picked per
-        # photo); the clean original URL is never exposed.
-        variant = _ensure_wm_variant(photo)
-        url = gallery_cloudinary.full_url(photo.cloudinary_public_id, variant)
-        display_url = gallery_cloudinary.display_url(photo.cloudinary_public_id, "photo", variant)
-        download_url = gallery_cloudinary.download_url(photo.cloudinary_public_id, "photo", variant)
-        payload_url_fields = {"url": url, "display_url": display_url, "download_url": download_url}
-    else:
-        url = f"{be}/static/{photo.rel_path}"
-        payload_url_fields = {"url": url, "display_url": url, "download_url": url}
-    payload = {
-        "id": photo.id,
-        "event_id": photo.event_id,
-        "filename": photo.filename,
-        **payload_url_fields,
-        "media_type": "photo",
-        "faces_detected": photo.faces_detected,
-        "created_at": photo.created_at.isoformat() if photo.created_at else None,
-    }
-    if distance is not None:
-        payload["distance"] = round(distance, 4)
-        payload["score"] = round(max(0.0, 1.0 - distance) * 100, 1)
-    return payload
-
-
-def make_slug(name: str) -> str:
-    """Event code = sanitized event name (no random suffix).
-    'Maya Wedding' -> 'maya-wedding'. Duplicates get -2, -3, etc.
-    """
-    base = re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")[:40] or "event"
-    slug = base
-    counter = 2
-    while Event.query.filter_by(slug=slug).first():
-        slug = f"{base}-{counter}"
-        counter += 1
-    return slug
 
 
 def make_gallery_slug(name: str) -> str:
@@ -317,40 +252,10 @@ def make_gallery_slug(name: str) -> str:
     return slug
 
 
-def build_qr_code(event: Event) -> None:
-    """Generate the shareable QR code PNG for an event (saved locally)."""
-    join_url = f"{_frontend_base()}/join?event={event.slug}"
-    img = qrcode.make(join_url, box_size=10, border=2)
-    img.save(os.path.join(app.config["QRCODE_FOLDER"], f"{event.slug}.png"))
-
-
-def match_distance(user: User, photo: Photo):
-    """Euclidean distance between the guest's selfie and the best face in a photo."""
-    if not user.selfie_embedding:
-        return None
-    try:
-        query = np.array(json.loads(user.selfie_embedding), dtype=np.float32)
-        candidates = [np.array(e, dtype=np.float32) for e in photo.embedding_list()]
-    except Exception:
-        return None
-    return face_engine.best_distance(query, candidates)
-
-
 # ---------------------------------------------------------------- public
 @app.get("/api/health")
 def health():
-    return jsonify({"status": "ok", "face_ai": face_engine.ai_status()})
-
-
-@app.get("/api/events/<slug>")
-def public_event(slug):
-    event = Event.query.filter_by(slug=slug.strip().lower()).first()
-    if not event:
-        return jsonify({"error": "Event not found"}), 404
-    return jsonify({"event": {
-        "id": event.id, "name": event.name, "slug": event.slug,
-        "photo_count": event.photos.count(),
-    }})
+    return jsonify({"status": "ok"})
 
 
 # ------------------------------------------------- couple's gallery (public, passcode-only)
@@ -481,141 +386,6 @@ def me():
     u = request.current_user.to_dict()
     u["is_owner"] = is_owner(request.current_user)
     return jsonify({"user": u})
-
-
-# ---------------------------------------------------------------- admin: events
-@app.post("/api/admin/events")
-@admin_required
-def create_event():
-    data = request.get_json(force=True, silent=True) or {}
-    name = (data.get("name") or "").strip()
-    if not name:
-        return jsonify({"error": "Event name is required."}), 400
-    event = Event(name=name, slug=make_slug(name), admin_id=request.current_user.id)
-    db.session.add(event)
-    db.session.commit()
-    build_qr_code(event)
-    return jsonify({"event": event_payload(event)}), 201
-
-
-@app.get("/api/admin/events")
-@admin_required
-def list_events():
-    events = (Event.query
-              .filter_by(admin_id=request.current_user.id)
-              .order_by(Event.created_at.desc()).all())
-    return jsonify({"events": [event_payload(e) for e in events]})
-
-
-@app.delete("/api/admin/events/<int:event_id>")
-@admin_required
-def delete_event(event_id):
-    event = Event.query.get_or_404(event_id)
-    if event.admin_id != request.current_user.id:
-        return jsonify({"error": "Not your event."}), 403
-    # Event photos are local files; the uploads dir is removed below.
-    # (Couple galleries are separate and are never touched here.)
-    event_dir = os.path.join(app.config["UPLOAD_FOLDER"], event.slug)
-    qr_path = os.path.join(app.config["QRCODE_FOLDER"], f"{event.slug}.png")
-    db.session.delete(event)
-    db.session.commit()
-    shutil.rmtree(event_dir, ignore_errors=True)
-    try:
-        os.remove(qr_path)
-    except OSError:
-        pass
-    return jsonify({"ok": True})
-
-
-# ---------------------------------------------------------------- admin: photos
-@app.post("/api/admin/events/<int:event_id>/photos")
-@admin_required
-def upload_event_photos(event_id):
-    event = Event.query.get_or_404(event_id)
-    if event.admin_id != request.current_user.id:
-        return jsonify({"error": "Not your event."}), 403
-
-    files = request.files.getlist("files") or list(request.files.values())
-    files = [f for f in files if f and f.filename and _allowed_file(f.filename)]
-    if not files:
-        return jsonify({"error": "No valid image files received (png/jpg/jpeg/webp)."}), 400
-
-    dest_dir = os.path.join(app.config["UPLOAD_FOLDER"], event.slug)
-    os.makedirs(dest_dir, exist_ok=True)
-
-    # Face descriptors are computed in the photographer's browser (face-api.js)
-    # and sent as a JSON array aligned with the files order:
-    # descriptors[i] = list of 128-dim vectors for files[i].
-    try:
-        raw_descriptors = json.loads(request.form.get("descriptors", "[]"))
-    except Exception:
-        raw_descriptors = []
-
-    use_cloud = _cloudinary_ready()
-    preset = app.config["CLOUDINARY_UPLOAD_PRESET"]
-    folder = f"{app.config['CLOUDINARY_FOLDER']}/events/{event.slug}"
-    saved = []
-    errors = []
-    for idx, f in enumerate(files):
-        ext = secure_filename(f.filename).rsplit(".", 1)[1].lower()
-        filename = f"{uuid.uuid4().hex}.{ext}"
-
-        # Client-computed descriptors (validated server-side).
-        embeddings = face_engine.sanitize_descriptors(
-            raw_descriptors[idx] if idx < len(raw_descriptors) else []
-        )
-
-        cloud_url = cloud_pid = wm_variant = None
-        rel_path = ""
-        if use_cloud:
-            # Permanent storage: the file goes to Cloudinary; only its
-            # URL/public_id are kept in the database row.
-            f.stream.seek(0)
-            # Watermark colour from the photo's own bottom-left corner.
-            wm_variant = gallery_cloudinary.corner_variant(f.stream.read())
-            f.stream.seek(0)
-            try:
-                up = gallery_cloudinary.upload_media(f, "photo", folder, preset)
-                cloud_url, cloud_pid = up["url"], up["public_id"]
-            except GalleryStorageError as exc:
-                errors.append({"filename": f.filename, "error": str(exc)})
-                continue
-        else:
-            abs_path = os.path.join(dest_dir, filename)
-            f.save(abs_path)
-            rel_path = f"uploads/{event.slug}/{filename}"
-
-        photo = Photo(
-            event_id=event.id,
-            filename=filename,
-            rel_path=rel_path,
-            cloudinary_url=cloud_url,
-            cloudinary_public_id=cloud_pid,
-            wm_variant=wm_variant,
-            face_embeddings=json.dumps(embeddings),
-            faces_detected=len(embeddings),
-        )
-        db.session.add(photo)
-        db.session.flush()
-        saved.append(photo)
-    db.session.commit()
-
-    return jsonify({
-        "photos": [photo_payload(p) for p in saved],
-        "errors": errors,
-        "photo_count": event.photos.count(),
-        "face_ai": face_engine.ai_status(),
-    }), 201
-
-
-@app.get("/api/admin/events/<int:event_id>/photos")
-@admin_required
-def list_event_photos(event_id):
-    event = Event.query.get_or_404(event_id)
-    if event.admin_id != request.current_user.id:
-        return jsonify({"error": "Not your event."}), 403
-    photos = event.photos.order_by(Photo.created_at.desc()).all()
-    return jsonify({"photos": [photo_payload(p) for p in photos]})
 
 
 # ------------------------------------------------- admin: couple's galleries (standalone)
@@ -811,74 +581,6 @@ def _delete_gallery_media_files(item: GalleryMedia) -> None:
         )
 
 
-@app.delete("/api/admin/photos/<int:photo_id>")
-@admin_required
-def delete_photo_admin(photo_id):
-    photo = Photo.query.get_or_404(photo_id)
-    if photo.event.admin_id != request.current_user.id:
-        return jsonify({"error": "Not your event."}), 403
-    _delete_photo_files(photo)
-    db.session.delete(photo)
-    db.session.commit()
-    return jsonify({"ok": True})
-
-
-def _delete_photo_files(photo: Photo) -> None:
-    # Cloudinary-backed photos: best-effort remote destroy (it needs an API
-    # secret, which unsigned-preset setups don't have, so the asset may
-    # linger in the library even though the row is gone — same behaviour as
-    # gallery media). Local files are removed from disk as before.
-    if photo.cloudinary_public_id:
-        gallery_cloudinary.delete_media(photo.cloudinary_public_id, "photo")
-        return
-    if photo.rel_path:
-        try:
-            os.remove(os.path.join(app.config["STATIC_DIR"], photo.rel_path))
-        except OSError:
-            pass
-
-
-@app.put("/api/admin/photos/<int:photo_id>")
-@admin_required
-def edit_photo_admin(photo_id):
-    """Replace a photo's image (e.g. after client-side rotate/flip/crop)
-    and re-run face detection on it. The public URL stays the same."""
-    photo = Photo.query.get_or_404(photo_id)
-    if photo.event.admin_id != request.current_user.id:
-        return jsonify({"error": "Not your event."}), 403
-    f = request.files.get("file") or next(iter(request.files.values()), None)
-    if not f or not f.filename or not _allowed_file(f.filename):
-        return jsonify({"error": "No valid image file received (png/jpg/jpeg/webp)."}), 400
-    if photo.cloudinary_public_id:
-        # Upload the edited image as a new Cloudinary asset and point the
-        # row at it (unsigned presets can't overwrite in place).
-        folder = f"{app.config['CLOUDINARY_FOLDER']}/events/{photo.event.slug}"
-        f.stream.seek(0)
-        wm_variant = gallery_cloudinary.corner_variant(f.stream.read())
-        f.stream.seek(0)
-        try:
-            up = gallery_cloudinary.upload_media(
-                f, "photo", folder, app.config["CLOUDINARY_UPLOAD_PRESET"]
-            )
-        except GalleryStorageError as exc:
-            return jsonify({"error": str(exc)}), 502
-        photo.cloudinary_url = up["url"]
-        photo.cloudinary_public_id = up["public_id"]
-        photo.wm_variant = wm_variant
-    else:
-        abs_path = os.path.join(app.config["STATIC_DIR"], photo.rel_path)
-        f.save(abs_path)  # overwrite in place
-    try:
-        raw = json.loads(request.form.get("descriptors", "[]"))
-    except Exception:
-        raw = []
-    embeddings = face_engine.sanitize_descriptors(raw)
-    photo.face_embeddings = json.dumps(embeddings)
-    photo.faces_detected = len(embeddings)
-    db.session.commit()
-    return jsonify({"photo": photo_payload(photo)})
-
-
 # ---------------------------------------------------------------- admin: user access control
 @app.get("/api/admin/users")
 @admin_required
@@ -945,119 +647,6 @@ def update_user(user_id):
     return jsonify({"user": d})
 
 
-# ---------------------------------------------------------------- guest: selfie + matches
-@app.post("/api/guest/selfie")
-@login_required
-def upload_selfie():
-    user = request.current_user
-    f = request.files.get("selfie") or next(iter(request.files.values()), None)
-    if not f or not f.filename or not _allowed_file(f.filename):
-        return jsonify({"error": "Please upload a selfie image (png/jpg/jpeg/webp)."}), 400
-
-    ext = secure_filename(f.filename).rsplit(".", 1)[1].lower()
-    filename = f"user_{user.id}_{uuid.uuid4().hex[:8]}.{ext}"
-
-    # Face descriptor is computed in the guest's browser (face-api.js),
-    # sent as a single 128-dim JSON array in the "descriptor" form field.
-    # Validate BEFORE storing anything, so a faceless selfie is never kept.
-    try:
-        raw = json.loads(request.form.get("descriptor", "null"))
-    except Exception:
-        raw = None
-    cleaned = face_engine.sanitize_descriptors([raw], max_faces=1)
-    embedding = cleaned[0] if cleaned else None
-    if embedding is None:
-        return jsonify({"error": "No face detected in that selfie. Try a clearer, front-facing photo."}), 422
-
-    # Remove previous local selfie file (best effort).
-    if user.selfie_path:
-        try:
-            os.remove(os.path.join(app.config["STATIC_DIR"], user.selfie_path))
-        except OSError:
-            pass
-
-    if _cloudinary_ready():
-        folder = f"{app.config['CLOUDINARY_FOLDER']}/selfies"
-        f.stream.seek(0)
-        try:
-            up = gallery_cloudinary.upload_media(
-                f, "photo", folder, app.config["CLOUDINARY_UPLOAD_PRESET"]
-            )
-        except GalleryStorageError as exc:
-            return jsonify({"error": str(exc)}), 502
-        user.selfie_path = None
-        user.selfie_cloudinary_url = up["url"]
-        selfie_url = up["url"]
-    else:
-        abs_path = os.path.join(app.config["SELFIE_FOLDER"], filename)
-        f.save(abs_path)
-        user.selfie_path = f"selfies/{filename}"
-        user.selfie_cloudinary_url = None
-        selfie_url = f"{_public_base()}/static/{user.selfie_path}"
-
-    user.selfie_embedding = json.dumps(embedding)
-    db.session.commit()
-    return jsonify({
-        "selfie_url": selfie_url,
-        "faces_detected": 1,
-        "user": user.to_dict(),
-    })
-
-
-@app.get("/api/guest/matches")
-@login_required
-def guest_matches():
-    user = request.current_user
-    slug = (request.args.get("event") or "").strip().lower()
-    if not slug:
-        return jsonify({"error": "Pass ?event=<event-slug>."}), 400
-    event = Event.query.filter_by(slug=slug).first()
-    if not event:
-        return jsonify({"error": "Event not found."}), 404
-    if not user.selfie_embedding:
-        return jsonify({"error": "Upload your selfie first.", "needs_selfie": True}), 400
-
-    threshold = app.config["FACE_MATCH_THRESHOLD"]
-    matches = []
-    for photo in event.photos.order_by(Photo.created_at.desc()).all():
-        d = match_distance(user, photo)
-        if d is not None and d <= threshold:
-            matches.append(photo_payload(photo, distance=d))
-    matches.sort(key=lambda m: m["distance"])
-    return jsonify({"matches": matches, "count": len(matches), "event": event.name})
-
-
-@app.get("/api/guest/download/<int:photo_id>")
-@login_required
-def download_photo(photo_id):
-    photo = Photo.query.get_or_404(photo_id)
-    d = match_distance(request.current_user, photo)
-    if d is None or d > app.config["FACE_MATCH_THRESHOLD"]:
-        return jsonify({"error": "This photo is not in your matches."}), 403
-    if photo.cloudinary_public_id:
-        return redirect(
-            gallery_cloudinary.download_url(
-                photo.cloudinary_public_id, "photo", _ensure_wm_variant(photo)
-            )
-        )
-    directory = os.path.join(app.config["STATIC_DIR"], os.path.dirname(photo.rel_path))
-    return send_from_directory(directory, os.path.basename(photo.rel_path), as_attachment=True)
-
-
-@app.delete("/api/guest/photos/<int:photo_id>")
-@login_required
-def delete_photo_guest(photo_id):
-    """A guest can delete a photo they were matched in (their face, their call)."""
-    photo = Photo.query.get_or_404(photo_id)
-    d = match_distance(request.current_user, photo)
-    if d is None or d > app.config["FACE_MATCH_THRESHOLD"]:
-        return jsonify({"error": "This photo is not in your matches."}), 403
-    _delete_photo_files(photo)
-    db.session.delete(photo)
-    db.session.commit()
-    return jsonify({"ok": True})
-
-
 # ---------------------------------------------------------------- serve built frontend (single-container deploy)
 # When SERVE_FRONTEND=1 and the Next.js static export is present at
 # FRONTEND_DIR, Flask serves the website itself — one container, one port,
@@ -1092,18 +681,8 @@ with app.app_context():
         for _ddl in (
             "ALTER TABLE users ADD COLUMN is_active BOOLEAN DEFAULT 1",
             "ALTER TABLE users ADD COLUMN phone VARCHAR(30)",
-            # Couple's gallery (2026-10-27): passcode hash per event, and
-            # Cloudinary fields on photos. Existing rows get media_type='photo'.
-            "ALTER TABLE events ADD COLUMN passcode_hash VARCHAR(255)",
-            "ALTER TABLE photos ADD COLUMN media_type VARCHAR(10) DEFAULT 'photo'",
-            "ALTER TABLE photos ADD COLUMN cloudinary_url VARCHAR(500)",
-            "ALTER TABLE photos ADD COLUMN cloudinary_public_id VARCHAR(255)",
-            # All-photos-on-Cloudinary (2026-11-06): guest selfies can live
-            # on Cloudinary too, not just on local disk.
-            "ALTER TABLE users ADD COLUMN selfie_cloudinary_url VARCHAR(700)",
-            # Watermark (2026-11-10): per-photo logo colour for the
+            # Watermark (2026-11-10): per-item logo colour for the
             # DKNOTT watermark overlay on delivered copies.
-            "ALTER TABLE photos ADD COLUMN wm_variant VARCHAR(10)",
             "ALTER TABLE gallery_media ADD COLUMN wm_variant VARCHAR(10)",
             # Gallery folders (2026-11-11): optional per-item folder
             # ('Haldi', 'Wedding', ...) chosen at upload time.
@@ -1126,5 +705,4 @@ with app.app_context():
 
 
 if __name__ == "__main__":
-    print("[snapfind] Face AI:", face_engine.ai_status())
     app.run(host="0.0.0.0", port=5000, debug=True)

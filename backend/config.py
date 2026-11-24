@@ -35,12 +35,8 @@ class Config:
     FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:3000").rstrip("/")
     BACKEND_URL = os.environ.get("BACKEND_URL", "").rstrip("/")
 
-    # Euclidean DISTANCE threshold for face-api.js descriptors (lower = stricter).
-    # face-api.js convention is ~0.6; 0.5 is a good balance for event photos.
-    FACE_MATCH_THRESHOLD = float(os.environ.get("FACE_MATCH_THRESHOLD", "0.50"))
-
-    # Max upload size per request (MB). Gallery videos need more headroom
-    # than guest photos, so the default is 100 — override with MAX_UPLOAD_MB.
+    # Max upload size per request (MB). Gallery videos need more headroom,
+    # so the default is 100 — override with MAX_UPLOAD_MB.
     MAX_CONTENT_LENGTH = int(os.environ.get("MAX_UPLOAD_MB", "100")) * 1024 * 1024
 
     # ---- Couple's gallery (Cloudinary, UNSIGNED upload preset) ----

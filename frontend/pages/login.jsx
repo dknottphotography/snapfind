@@ -18,8 +18,8 @@ const PAPER = "#F5F2EC";
 const MUTED = "#A8A29A";
 
 const HERO_LINES = [
-  "Every guest finds their photos.",
-  "Your face is the key to your photos.",
+  "Every couple gets a private gallery.",
+  "A 4-digit PIN is the key to the gallery.",
   "Private by design — yours only.",
 ];
 
@@ -44,7 +44,7 @@ export default function LoginPage() {
     const t = getToken();
     const u = getUser();
     if (t && u) {
-      router.replace(u.role === "admin" ? "/admin" : "/gallery");
+      router.replace(u.role === "admin" ? "/admin" : "/couple-gallery");
     }
   }, [router]);
 
@@ -55,7 +55,7 @@ export default function LoginPage() {
     try {
       const data = await login(email.trim(), password);
       saveAuth(data.token, data.user);
-      router.push(data.user.role === "admin" ? "/admin" : "/gallery");
+      router.push(data.user.role === "admin" ? "/admin" : "/couple-gallery");
     } catch (err) {
       setError(err.message);
       setLoading(false);
@@ -93,7 +93,7 @@ export default function LoginPage() {
               Welcome back
             </h1>
             <p className="mt-2 text-sm leading-relaxed" style={{ color: MUTED }}>
-              Log in to find your event photos.
+              Log in to your photographer studio.
             </p>
 
             {error && (
@@ -171,7 +171,7 @@ export default function LoginPage() {
             style={{ background: TEAL }}
           />
           <p className="relative text-[11px] font-semibold uppercase tracking-[0.3em] text-white/50">
-            SnapFind · For photographers &amp; guests
+            SnapFind · For photographers &amp; couples
           </p>
           <h2
             style={serif}
@@ -180,8 +180,8 @@ export default function LoginPage() {
             {HERO_LINES[heroLine]}
           </h2>
           <p className="relative mt-3 max-w-md text-sm leading-relaxed text-white/60">
-            Face-matched galleries, private by PIN, downloads in one tap —
-            no app, no endless scrolling.
+            Private galleries by PIN, permanent Cloudinary storage,
+            folders and watermarking — no app, no accounts for the couple.
           </p>
           <div className="relative mt-6 flex gap-2" aria-hidden="true">
             {HERO_LINES.map((_, i) => (

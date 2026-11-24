@@ -20,7 +20,7 @@ import {
 // Flow: open private link -> ENTER -> PIN -> albums.
 // No account, no signup.
 
-const serif = { fontFamily: "'Cormorant Garamond', Georgia, 'Times New Roman', serif" };
+const serif = { fontFamily: "'Instrument Serif', Georgia, 'Times New Roman', serif" };
 const INK = "#17171A";
 const SURFACE = "#1E1E21";
 const TEAL = "#0F766E";
@@ -385,7 +385,7 @@ export default function CoupleGallery() {
           content="A private photo and video gallery for the bride and groom. Open it with the PIN from your photographer."
         />
         <link
-          href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500&display=swap"
+          href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital,wght@0,400;1,400&display=swap"
           rel="stylesheet"
         />
       </Head>

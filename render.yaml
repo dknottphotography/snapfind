@@ -1,7 +1,7 @@
 # SnapFind — Render Blueprint (one-click deploy of the full app)
 #
 # What this does: tells Render to build the repo's Dockerfile (Stage 1 builds the
-# Next.js frontend as a static export; Stage 2 runs the Flask API + face AI and
+# Next.js frontend as a static export; Stage 2 runs the Flask API and
 # serves the built site itself, all on one container / one port).
 #
 # How to use it:
@@ -10,12 +10,12 @@
 #   3. On the free plan the app sleeps after 15 min idle (wakes on visit).
 #
 # Known free-plan limits (be honest about these):
-#   - Filesystem is EPHEMERAL on the free plan: event photos, selfies and the
-#     SQLite DB are wiped on every deploy/restart. For real use, upgrade to a
-#     paid instance and add a persistent disk mounted at /app/backend/static
-#     (plus a second mount at /app/backend/data and DATABASE_URL pointing there).
-#   - The free instance has 512 MB RAM; the first boot downloads the ArcFace
-#     weights (~a few hundred MB, one-time) which can be slow. If it stalls,
+#   - Filesystem is EPHEMERAL on the free plan: the SQLite DB is wiped on
+#     every deploy/restart. Gallery media live permanently on Cloudinary,
+#     so they survive. For real use, upgrade to a paid instance and add a
+#     persistent disk mounted at /app/backend/static (plus a second mount
+#     at /app/backend/data and DATABASE_URL pointing there).
+#   - The free instance has 512 MB RAM. If the first boot stalls,
 #     switch the service to the Starter plan.
 
 services:
