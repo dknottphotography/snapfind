@@ -216,7 +216,7 @@ export default function Home() {
           <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-2 px-4 text-xs sm:flex-row sm:px-6" style={{ color: MUTED }}>
             <span className="flex items-center gap-2 font-display font-bold" style={{ color: PAPER }}>
               <img src="/logo-mark.svg" alt="" className="h-6 w-6" />
-              Snap<span className="-ml-2" style={{ color: TEAL_BRIGHT }}>Find</span>
+              Moments
             </span>
             <span>Private galleries. Your photos stay yours.</span>
           </div>
