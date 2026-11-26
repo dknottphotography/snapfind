@@ -5,7 +5,7 @@ import "../styles/globals.css";
 export default function App({ Component, pageProps }) {
   const router = useRouter();
   // The couple's gallery is a standalone page with its own design.
-  // It does not share SnapFind's chrome (film grain, dark theme shell).
+  // It does not share Moments' chrome (film grain, dark theme shell).
   const standalone = router.pathname === "/couple-gallery";
 
   return (

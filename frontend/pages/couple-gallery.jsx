@@ -10,13 +10,13 @@ import {
   clearGalleryToken,
 } from "../lib/api";
 
-// STANDALONE PAGE — separate from the SnapFind website.
+// STANDALONE PAGE — separate from the Moments website.
 // Dark, premium couple's gallery in the style of the photographer's
 // reference experience (Pic-Time-style): split-screen entry / PIN
 // (brand panel + rotating photo hero) -> 4 separate PIN boxes ->
 // album cards with the cover on top and the name below -> photo grid
 // -> viewer with Original / Optimized download choices.
-// No SnapFind branding, no links back to SnapFind.
+// No Moments branding, no links back to Moments.
 // Flow: open private link -> ENTER -> PIN -> albums.
 // No account, no signup.
 

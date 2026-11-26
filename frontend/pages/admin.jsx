@@ -554,7 +554,7 @@ export default function AdminPage() {
   return (
     <>
       <Head>
-        <title>Photographer Studio — SnapFind</title>
+        <title>Photographer Studio — Moments</title>
         <link
           href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&display=swap"
           rel="stylesheet"

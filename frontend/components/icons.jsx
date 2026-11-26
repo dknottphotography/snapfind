@@ -1,4 +1,4 @@
-// SnapFind icon set — clean 24px stroke icons. No emojis in the UI.
+// Moments icon set — clean 24px stroke icons. No emojis in the UI.
 const base = {
   width: 24,
   height: 24,

@@ -1,4 +1,4 @@
-// Central API client for the SnapFind Flask backend.
+// Central API client for the Moments Flask backend.
 // Backend base URL: NEXT_PUBLIC_API_URL (production: Render backend;
 // empty => same-origin relative URLs for the single-container deploy).
 

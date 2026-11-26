@@ -34,9 +34,9 @@ export default function Navbar() {
     >
       <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6">
         <Link href="/" className="group flex items-center gap-2.5">
-          <img src="/logo-mark.svg" alt="SnapFind logo" className="h-10 w-10" />
+          <img src="/logo-mark.svg" alt="Moments logo" className="h-10 w-10" />
           <span className="font-display text-lg font-bold tracking-wide" style={{ color: PAPER }}>
-            Snap<span style={{ color: "#2DD4BF" }}>Find</span>
+            Moments
           </span>
         </Link>
 

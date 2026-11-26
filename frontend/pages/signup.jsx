@@ -70,7 +70,7 @@ export default function SignupPage() {
   return (
     <>
       <Head>
-        <title>Sign up for SnapFind</title>
+        <title>Sign up for Moments</title>
         <meta name="theme-color" content="#17171A" />
         <link
           href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&display=swap"
@@ -84,9 +84,9 @@ export default function SignupPage() {
         {/* ---- form panel ---- */}
         <div className="flex flex-1 flex-col px-6 py-6 sm:max-w-[480px] sm:shrink-0 sm:px-10 sm:py-8">
           <Link href="/" className="flex items-center gap-2.5 self-start">
-            <img src="/logo-mark.svg" alt="SnapFind logo" className="h-10 w-10" />
+            <img src="/logo-mark.svg" alt="Moments logo" className="h-10 w-10" />
             <span className="font-display text-lg font-bold tracking-wide" style={{ color: PAPER }}>
-              Snap<span style={{ color: "#2DD4BF" }}>Find</span>
+              Moments
             </span>
           </Link>
 
@@ -204,7 +204,7 @@ export default function SignupPage() {
             style={{ background: TEAL }}
           />
           <p className="relative text-[11px] font-semibold uppercase tracking-[0.3em] text-white/50">
-            SnapFind · For photographers &amp; couples
+            Moments · For photographers &amp; couples
           </p>
           <h2
             style={serif}

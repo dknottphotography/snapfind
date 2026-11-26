@@ -2,7 +2,7 @@ import Head from "next/head";
 import Link from "next/link";
 import Navbar from "../components/Navbar";
 
-// SnapFind — private galleries for couples. Dark premium landing
+// Moments — private galleries for couples. Dark premium landing
 // (Ve.ai family). No animation libraries, no 3D scene: plain sections
 // on the dark tokens. Explicit rgba colours throughout: the light-theme
 // override in globals.css rewrites text-white / bg-white-* /
@@ -67,10 +67,10 @@ export default function Home() {
   return (
     <>
       <Head>
-        <title>SnapFind: Private galleries for couples</title>
+        <title>Moments: Private galleries for couples</title>
         <meta
           name="description"
-          content="SnapFind Private Galleries: photographers create a private gallery from the couple's name, set a 4-digit PIN, and share the link or QR. The couple opens it, enters the PIN, and downloads their photos — no app, no account."
+          content="Moments Private Galleries: photographers create a private gallery from the couple's name, set a 4-digit PIN, and share the link or QR. The couple opens it, enters the PIN, and downloads their photos — no app, no account."
         />
         <link
           href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&display=swap"
@@ -87,7 +87,7 @@ export default function Home() {
             className="text-[11px] font-semibold uppercase tracking-[0.3em]"
             style={{ color: TEAL_BRIGHT }}
           >
-            SnapFind · Private Galleries
+            Moments · Private Galleries
           </p>
           <h1
             style={serif}
